@@ -3,11 +3,11 @@ import 'screens/root_shell.dart';
 import 'theme/app_theme.dart';
 
 void main() {
-  runApp(const FilajaApp());
+  runApp(const FilaCertaApp());
 }
 
-class FilajaApp extends StatelessWidget {
-  const FilajaApp({super.key});
+class FilaCertaApp extends StatelessWidget {
+  const FilaCertaApp({super.key});
 
   @override
   Widget build(BuildContext context) {

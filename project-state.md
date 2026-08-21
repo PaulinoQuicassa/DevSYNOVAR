@@ -42,12 +42,11 @@ Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem ge
 
 ## Últimas alterações
 
-- Renomeada a marca visível de "FilaJá" para "Fila Certa" (título, wordmark, labels Android/iOS/web, README, pubspec description). Identificador interno do pacote (`filaja_app`) mantido por decisão explícita.
+- Renomeação completa de "FilaJá" para "Fila Certa" em todos os aspectos: pacote Dart (`fila_certa_app`), `applicationId`/`namespace` Android, bundle id iOS/macOS, nomes de produto Windows/Linux, classes Dart (`FilaCertaApp`, `FilaCertaBottomNav`), e todo o texto visível.
 - Projeto organizado com Claude Code: `git init`, `CLAUDE.md` (raiz), `.claude/agents/flutter.md`, este ficheiro.
 - Correção de aviso de lint (`justify-content` inválido não se aplica aqui — nota: essa correção foi no design system HTML separado, não neste código Flutter).
 
 ## Próximos passos (sugestões, não decisões tomadas)
 
-- Distinguir se `filaja_app` deve eventualmente ser renomeado (decisão pendente, ver `CLAUDE.md`).
 - Decidir se este protótipo vai ganhar backend real ou continuar como demo com dados mock.
 - Ecrãs de atendente/supervisor/painel TV existem apenas como conceito visual noutro artefacto — decidir se entram neste repositório Flutter.

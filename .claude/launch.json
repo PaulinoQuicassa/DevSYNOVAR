@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "filaja-web",
+      "name": "fila-certa-web",
       "runtimeExecutable": "node",
       "runtimeArgs": ["scripts/serve_web.js"],
       "port": 5173

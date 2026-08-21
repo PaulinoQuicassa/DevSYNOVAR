@@ -12,7 +12,7 @@ Protótipo Flutter de uma plataforma de gestão inteligente de filas e atendimen
 
 ```
 lib/
-├── main.dart              # entry point (FilajaApp)
+├── main.dart              # entry point (FilaCertaApp)
 ├── app_state.dart         # rootTabController — navegação global entre separadores
 ├── theme/app_theme.dart   # cores e tipografia (AppColors, AppTheme)
 ├── models/                # QueueLocation, ServiceItem
@@ -50,8 +50,11 @@ flutter build web    # build de produção para browser
 
 ## O que NÃO alterar sem confirmação
 
-- Nome do pacote (`filaja_app` em `pubspec.yaml`) — decisão explícita de manter por agora, apesar do nome visível da app ser "Fila Certa" (ver commit de organização do Claude Code).
 - Dados mock em `lib/data/mock_data.dart` — refletem os mockups originais em `Imagensdeecrans/`; alterações de conteúdo devem ser deliberadas, não incidentais.
+
+## Histórico de nomenclatura
+
+O projeto chamou-se inicialmente "FilaJá"; a marca foi depois alterada para "Fila Certa" em todos os aspectos — identificador do pacote Dart (`fila_certa_app`), `applicationId`/`namespace` Android (`com.example.fila_certa_app`), bundle id iOS/macOS (`com.example.filaCertaApp`), nomes de produto Windows/Linux, classes Dart (`FilaCertaApp`, `FilaCertaBottomNav`) e todo o texto visível. Não deve restar nenhuma referência a "filaja"/"FilaJá" no código — se encontrares alguma, é um resíduo a corrigir.
 
 ## Estado atual
 

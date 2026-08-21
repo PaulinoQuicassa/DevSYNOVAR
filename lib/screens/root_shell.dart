@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme/app_theme.dart';
-import '../widgets/filaja_bottom_nav.dart';
+import '../widgets/fila_certa_bottom_nav.dart';
 import 'choose_location_screen.dart';
 import 'home_screen.dart';
 import 'my_appointments_screen.dart';
@@ -61,7 +61,7 @@ class _RootShellState extends State<RootShell> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(child: IndexedStack(index: activeIndex, children: _pages)),
-      bottomNavigationBar: FilajaBottomNav(currentIndex: rootTabController.value, onTap: _handleTap),
+      bottomNavigationBar: FilaCertaBottomNav(currentIndex: rootTabController.value, onTap: _handleTap),
     );
   }
 }

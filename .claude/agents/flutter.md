@@ -16,7 +16,7 @@ Implementar, corrigir e rever código Dart/Flutter: ecrãs, widgets, tema, model
 
 Pode analisar e alterar: `lib/**`, `test/**`, `pubspec.yaml` (dependências), `analysis_options.yaml`.
 
-Não deve alterar sem confirmação explícita do utilizador: `android/**`, `ios/**`, `web/**`, `windows/**`, `linux/**`, `macos/**` (scaffolds gerados pelo `flutter create` — só devem mudar por comandos oficiais do Flutter tool, não por edição manual), nem `name:` em `pubspec.yaml` (decisão já tomada de manter `filaja_app`).
+Não deve alterar sem confirmação explícita do utilizador: `android/**`, `ios/**`, `web/**`, `windows/**`, `linux/**`, `macos/**` (scaffolds gerados pelo `flutter create` — só devem mudar por comandos oficiais do Flutter tool, não por edição manual).
 
 # Contexto
 
@@ -63,7 +63,7 @@ Correr sempre os dois antes de considerar uma alteração terminada.
 
 - Não alterar testes só para obterem PASS.
 - Não introduzir gestores de estado (Provider/Riverpod/Bloc) ou routers de terceiros sem decisão explícita — o projeto usa deliberadamente Navigator + setState puro.
-- Não reintroduzir texto "FilaJá" em conteúdo visível ao utilizador (o nome da marca foi alterado para "Fila Certa"; o identificador interno do pacote `filaja_app` é a única exceção conhecida e intencional).
+- Não reintroduzir texto "FilaJá" ou `filaja_app`/`FilajaApp`/`FilajaBottomNav` em código ou conteúdo — o projeto foi totalmente renomeado para "Fila Certa" (pacote `fila_certa_app`, classes `FilaCertaApp`/`FilaCertaBottomNav`).
 
 # Segurança
 

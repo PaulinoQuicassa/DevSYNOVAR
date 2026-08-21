@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-class FilajaBottomNav extends StatelessWidget {
+class FilaCertaBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const FilajaBottomNav({super.key, required this.currentIndex, required this.onTap});
+  const FilaCertaBottomNav({super.key, required this.currentIndex, required this.onTap});
 
   static const _items = <_NavItemData>[
     _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Início'),

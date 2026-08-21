@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme/app_theme.dart';
-import 'filaja_bottom_nav.dart';
+import 'fila_certa_bottom_nav.dart';
 
 /// Shared chrome for every screen inside the "Entrar na fila" flow:
 /// keeps the bottom nav visible (with "Entrar na fila" active) so a tap
@@ -16,7 +16,7 @@ class FlowScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(child: body),
-      bottomNavigationBar: FilajaBottomNav(
+      bottomNavigationBar: FilaCertaBottomNav(
         currentIndex: 2,
         onTap: (i) {
           if (i == 2) return;
