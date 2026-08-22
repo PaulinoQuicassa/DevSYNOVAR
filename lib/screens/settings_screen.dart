@@ -124,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Este protótipo não tem servidor — os agendamentos e o histórico ficam guardados apenas nesta sessão da app.',
+              'Este protótipo não tem servidor — os agendamentos e o histórico ficam guardados apenas neste telemóvel, não sincronizam com outros dispositivos.',
               style: TextStyle(fontSize: 11.5, color: AppColors.textMuted, height: 1.4),
             ),
           ],

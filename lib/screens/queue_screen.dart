@@ -91,7 +91,13 @@ class QueueScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.access_time, size: 15, color: Colors.white),
                       SizedBox(width: 6),
-                      Text('Tempo estimado: 12 min', style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      Flexible(
+                        child: Text(
+                          'Tempo estimado: 12 min',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ],
                   ),
                 ),

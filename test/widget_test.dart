@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fila_certa_app/app_state.dart';
 import 'package:fila_certa_app/app_stores.dart';
@@ -8,6 +9,11 @@ import 'package:fila_certa_app/main.dart';
 
 void main() {
   setUp(() {
+    // Widget tests build FilaCertaApp directly (bypassing main()), so
+    // hydrateAllStores() never runs here — but store methods still fire
+    // SharedPreferences writes. This gives them an in-memory fake instead
+    // of hitting a real (unavailable) platform channel.
+    SharedPreferences.setMockInitialValues({});
     rootTabController.value = 0;
     appointmentsStore.reset();
     historyStore.reset();
@@ -113,5 +119,97 @@ void main() {
     // ...and bank-only services don't leak into the citizen service centre.
     expect(find.text('Depósitos e Levantamentos'), findsNothing);
     expect(find.text('Crédito Habitação'), findsNothing);
+  });
+
+  testWidgets('every reachable screen in the app renders without layout errors', (WidgetTester tester) async {
+    // Realistic narrow phone width, tall enough that long screens (Called,
+    // Almost, service grids) don't need scrolling for this test's taps.
+    tester.view.physicalSize = const Size(390, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const FilaCertaApp());
+    await tester.pumpAndSettle();
+
+    // --- Os meus atendimentos tab -> a history entry's detail screen ---
+    await tester.tap(find.text('Os meus\natendimentos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Os meus atendimentos'), findsOneWidget);
+
+    await tester.tap(find.text('Banco de Poupança e Crédito (BPC)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Detalhe do atendimento'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    // --- Agendamentos tab -> an existing appointment's detail screen ---
+    await tester.tap(find.text('Agendamentos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Marque hora e evite esperar na fila.'), findsOneWidget);
+
+    final baiName = MockData.locations[2].name;
+    await tester.tap(find.text(baiName));
+    await tester.pumpAndSettle();
+    expect(find.text('Detalhe do agendamento'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    // --- Perfil tab and every screen reachable from it ---
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+    expect(find.text('Paulino Quicassa'), findsOneWidget);
+
+    await tester.tap(find.text('Notificações'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alertas de fila'), findsOneWidget);
+    await tester.tap(find.byType(Switch).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Definições'));
+    await tester.pumpAndSettle();
+    expect(find.text('Unidade de distância'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ajuda e suporte'));
+    await tester.pumpAndSettle();
+    expect(find.text('Perguntas frequentes'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sobre a Fila Certa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Versão 1.0.0'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    // --- Back to Início, then the full queue flow through to Avaliação ---
+    await tester.tap(find.text('Início'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Entrar numa fila'));
+    await tester.pumpAndSettle();
+
+    final bpc = MockData.locations.first;
+    await tester.tap(find.text(bpc.name));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(bpc.services.first.name));
+    await tester.pumpAndSettle();
+    expect(find.text('Acompanhar fila'), findsOneWidget);
+
+    await tester.tap(find.text('Acompanhar fila'));
+    await tester.pumpAndSettle();
+    expect(find.text('Está quase na sua vez!'), findsOneWidget);
+
+    await tester.tap(find.text('Está quase na sua vez!'));
+    await tester.pumpAndSettle();
+    expect(find.text('Estou a caminho'), findsOneWidget);
+
+    await tester.tap(find.text('Estou a caminho'));
+    await tester.pumpAndSettle();
+    expect(find.text('Como foi o seu atendimento?'), findsOneWidget);
   });
 }

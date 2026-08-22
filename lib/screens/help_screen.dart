@@ -40,22 +40,25 @@ class HelpScreen extends StatelessWidget {
             const Text('Perguntas frequentes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             ..._faqs.map(
-              (faq) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
+              (faq) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Material(
                   color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    title: Text(faq.$1, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(faq.$2, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
-                    ],
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      title: Text(faq.$1, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(faq.$2, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
+                      ],
+                    ),
                   ),
                 ),
               ),

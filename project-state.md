@@ -1,10 +1,10 @@
 # Estado do Projeto — Fila Certa
 
-_Última atualização: 2026-08-22_ · Testado em Android real pelo utilizador (build + instalação confirmadas a funcionar).
+_Última atualização: 2026-08-22_ · Repositório: [github.com/PaulinoQuicassa/DevSYNOVAR](https://github.com/PaulinoQuicassa/DevSYNOVAR) (privado) · Testado em Android real pelo utilizador (build + instalação confirmadas a funcionar).
 
 ## Estado atual
 
-Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo completo de entrada em fila e de agendamento implementado e navegável, sem botões "mortos". `flutter analyze` limpo, testes automatizados a passar, `flutter build web --release` a compilar sem erros.
+Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo completo de entrada em fila e de agendamento implementado e navegável, sem botões "mortos", **com persistência local real** (sobrevive a fechar a app). `flutter analyze` limpo, todos os testes automatizados a passar, `flutter build web --release` e `flutter build apk --debug` a compilar sem erros.
 
 ## Funcionalidades
 
@@ -14,12 +14,13 @@ Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo com
 - [x] Ecrã "A sua senha" — número, progresso da fila, balcão, confirmação antes de sair da fila, folha de contacto real (telefone/WhatsApp/email do banco)
 - [x] Ecrã "Está quase" — alerta, WhatsApp real (`wa.me`), interruptor de alertas com estado próprio, folha de "detalhes da fila", confirmação antes de sair
 - [x] Ecrã "É a sua vez" — chamada, hora real, direções reais via Google Maps, confirmação antes de "não posso comparecer"
-- [x] Avaliação do atendimento — estrelas, recomendação, comentário, aspetos específicos; ao submeter, cria uma entrada real no histórico ("Os meus atendimentos")
-- [x] **Novo agendamento** (fluxo completo): escolher local → escolher serviço → escolher data (14 dias) e hora → confirmar → ecrã de confirmação com **QR code real** e código único
-- [x] Agendamentos — lista ligada a estado real (`appointmentsStore`); cada cartão abre um detalhe com QR e opção de cancelar (com confirmação)
-- [x] Os meus atendimentos — lista ligada a estado real (`historyStore`); cada cartão abre um detalhe com a avaliação dada
-- [x] Perfil — todas as opções ligadas: Notificações (interruptores reais), Definições (idioma + repor dados de demonstração), Ajuda e suporte (FAQ + contacto real), Sobre a Fila Certa, Terminar sessão (com confirmação)
+- [x] Avaliação do atendimento — estrelas, recomendação, comentário, aspetos específicos; ao submeter, cria uma entrada real no histórico ("Os meus atendimentos") **e persiste**
+- [x] **Novo agendamento** (fluxo completo): escolher local → escolher serviço → escolher data (14 dias) e hora → confirmar → ecrã de confirmação com **QR code real** e código único — **persiste**
+- [x] Agendamentos — lista ligada a estado real (`appointmentsStore`, persistido); cada cartão abre um detalhe com QR e opção de cancelar (com confirmação)
+- [x] Os meus atendimentos — lista ligada a estado real (`historyStore`, persistido); cada cartão abre um detalhe com a avaliação dada
+- [x] Perfil — todas as opções ligadas: Notificações (interruptores reais, persistidos), Definições (idioma persistido + repor dados de demonstração), Ajuda e suporte (FAQ + contacto real), Sobre a Fila Certa, Terminar sessão (com confirmação)
 - [x] Navegação inferior persistente durante todo o fluxo (fila e agendamento, cada um com o separador certo destacado)
+- [x] **Persistência local em disco** (`shared_preferences`) — agendamentos, histórico, preferências de notificação e idioma sobrevivem a fechar e reabrir a app no mesmo aparelho
 
 ## Em desenvolvimento
 
@@ -28,7 +29,7 @@ Nada em curso neste momento.
 ## Problemas conhecidos
 
 - Nenhum bug funcional conhecido.
-- Sem persistência entre execuções da app — agendamentos/histórico/notificações voltam ao estado inicial ao reiniciar (é um protótipo sem backend; há um botão em Definições para repor os dados de demonstração manualmente durante uma demo).
+- Persistência é só local ao dispositivo — sem conta/login, não sincroniza entre aparelhos (não há backend).
 - Sem modo escuro — decisão deliberada, ver `CLAUDE.md` ("O que NÃO alterar sem confirmação").
 - Ilustrações fotorrealistas das imagens de referência foram simplificadas para composições de ícones (limitação de geração de imagem, não um bug).
 - Logótipos dos bancos são monogramas coloridos, não a arte real das marcas (decisão deliberada, para não reproduzir logótipos registados).
@@ -39,26 +40,29 @@ Nada em curso neste momento.
 | Comando | Resultado |
 |---|---|
 | `flutter analyze` | PASS — 0 problemas |
-| `flutter test` | PASS — 3/3 (smoke test + fluxo completo de agendamento + catálogo de serviços do SIAC) |
+| `flutter test` | PASS — 10/10 (`widget_test.dart`: smoke test, agendamento ponta a ponta, catálogo SIAC, navegação completa por todos os ecrãs; `persistence_test.dart`: 6 testes de gravação/leitura) |
 | `flutter build web --release` | PASS |
 | `flutter build apk --debug` | PASS — instalado e testado em Android real pelo utilizador |
 
 ## Arquitetura
 
-Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem gestor de estado externo, sem backend, dados mock + estado mutável em memória (`app_stores.dart`), navegação via `Navigator` + `FlowScaffold`, ações reais do dispositivo via `url_launcher`, QR real via `qr_flutter`.
+Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem gestor de estado externo, sem backend, dados mock + estado em `app_stores.dart` persistido localmente via `persistence.dart` (`shared_preferences`), navegação via `Navigator` + `FlowScaffold`, ações reais do dispositivo via `url_launcher`, QR real via `qr_flutter`.
 
 ## Últimas alterações
 
-- Cartões de serviço tornados mais compactos (menos padding, ícones menores, altura fixa por `mainAxisExtent` em vez de `childAspectRatio`) — já não sobra espaço vazio em baixo. A correção revelou (e resolveu) mais 2 bugs reais de overflow em ecrã estreito de telemóvel (`status_pill.dart`, cabeçalho da Home) que a bateria de testes anterior não apanhava por usar uma largura de teste larga demais — todos os testes passaram a usar 390px (largura realista de telemóvel).
-- `QueueLocation` passou a ter o seu próprio catálogo de serviços (`services`) em vez de todas as localizações partilharem a mesma lista genérica de banco. O SIAC recebeu um catálogo real de 13 serviços (BI, Registo Civil, Trânsito/DTSER, Passaporte/SME, Cartório Notarial, Registo Automóvel, Registo Comercial, Registo Predial, NIF/AGT, INSS, Ficheiro Central, CAEC, Administração Distrital), com dados fornecidos pelo utilizador sobre o portal oficial do SIAC.
+- **Persistência local real** adicionada (`shared_preferences`): agendamentos, histórico, notificações e idioma sobrevivem a fechar a app. `Appointment` grava-se como referência (`locationMonogram`+`serviceName`) resolvida contra `MockData` ao carregar; `Visit` grava-se como retrato histórico (campos soltos), com a cor sempre recalculada a partir do `monogram` atual em vez de gravada. `main()` carrega tudo (`hydrateAllStores()`) antes do primeiro `runApp`. Atualizado o aviso em Definições, que já não dizia a verdade.
+- Corrigida uma inconsistência de dados: o histórico mock do SIAC ainda tinha o nome antigo ("SIAC — Centro de Atendimento") e um serviço genérico, desatualizados desde a mudança para o catálogo real do SIAC.
+- Adicionado um teste de "navegação completa" que visita todos os ecrãs alcançáveis a partir das abas e do Perfil — encontrou e permitiu corrigir mais 3 bugs reais: aviso de `Material`/`ListTile` invisível na Ajuda (FAQ), overflow no ecrã Sobre, overflow na pílula "Tempo estimado" do ecrã da fila.
+- Cartões de serviço tornados mais compactos (menos padding, ícones menores, altura fixa por `mainAxisExtent` em vez de `childAspectRatio`) — já não sobra espaço vazio em baixo. A correção revelou (e resolveu) mais 2 bugs de overflow (`status_pill.dart`, cabeçalho da Home); todos os testes passaram a usar 390px (largura realista de telemóvel) em vez da largura de teste por defeito.
+- `QueueLocation` passou a ter o seu próprio catálogo de serviços (`services`) em vez de todas as localizações partilharem a mesma lista genérica de banco. O SIAC recebeu um catálogo real de 13 serviços, com dados fornecidos pelo utilizador sobre o portal oficial do SIAC.
+- Repositório Git ligado ao GitHub (`PaulinoQuicassa/DevSYNOVAR`, privado) — todo o histórico local enviado.
 - Confirmado a funcionar em Android real (o utilizador instalou e testou o `app-debug.apk` num dispositivo/emulador ligado, depois de instalar o Android SDK e o JDK).
-- Passagem completa de "torna a app funcional": eliminados todos os botões sem ação (`onTap: () {}`), criado o fluxo de "Novo agendamento" de ponta a ponta (com QR code real), criadas 8 telas novas (agendamento, detalhes de agendamento/atendimento, notificações, definições, ajuda, sobre), pesquisa e filtros passaram a filtrar de verdade, ações de contacto/mapas/WhatsApp abrem apps reais via `url_launcher`.
-- Corrigidos 4 bugs reais de overflow de layout (`RenderFlex overflowed`) descobertos pelo novo teste end-to-end — texto longo sem `Flexible`/`ellipsis` em `GradientButton`, `LocationSummaryCard`, `ServiceCard` e no cartão de agendamento.
+- Passagem completa de "torna a app funcional": eliminados todos os botões sem ação, criado o fluxo de "Novo agendamento" de ponta a ponta (com QR code real), criadas 8 telas novas, pesquisa e filtros a filtrar de verdade, ações de contacto/mapas/WhatsApp a abrir apps reais via `url_launcher`.
 - Renomeação completa de "FilaJá" para "Fila Certa" em todos os aspectos (tarefa anterior).
 - Projeto organizado com Claude Code: `git init`, `CLAUDE.md` (raiz), `.claude/agents/flutter.md`, este ficheiro (tarefa anterior).
 
 ## Próximos passos (sugestões, não decisões tomadas)
 
-- Decidir se este protótipo vai ganhar backend real e persistência, ou continuar como demo com dados mock em memória.
 - Testar as ações `url_launcher` (chamar, WhatsApp, mapas) num dispositivo/emulador real.
+- Decidir se este protótipo vai ganhar um backend real (contas de utilizador, sincronização entre dispositivos, filas ao vivo) ou continuar como demo local.
 - Ecrãs de atendente/supervisor/painel TV existem apenas como conceito visual noutro artefacto — decidir se entram neste repositório Flutter.

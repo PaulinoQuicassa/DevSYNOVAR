@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'app_stores.dart';
 import 'screens/root_shell.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await hydrateAllStores();
   runApp(const FilaCertaApp());
 }
 
