@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../app_stores.dart';
 import '../data/mock_data.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
+import '../models/visit.dart';
 import '../theme/app_theme.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
@@ -47,6 +49,18 @@ class _RatingScreenState extends State<RatingScreen> {
   }
 
   void _submit() {
+    historyStore.addCompleted(
+      visit: Visit(
+        bank: widget.location.name,
+        monogram: widget.location.monogram,
+        color: widget.location.brandColor,
+        service: widget.service.name,
+        date: 'Hoje, agora',
+        ticket: MockData.currentTicket,
+        status: VisitStatus.completed,
+        rating: _overall,
+      ),
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Avaliação enviada. Obrigado pelo seu feedback!')),
     );

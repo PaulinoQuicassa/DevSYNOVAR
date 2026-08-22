@@ -4,6 +4,8 @@ import '../data/mock_data.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confirm_dialog.dart';
+import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/screen_header.dart';
@@ -15,8 +17,21 @@ class CalledScreen extends StatelessWidget {
 
   const CalledScreen({super.key, required this.location, required this.service});
 
+  Future<void> _cannotAttend(BuildContext context) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Não pode comparecer?',
+      message: 'A sua senha ${MockData.currentTicket} será libertada e outra pessoa será chamada. Terá de entrar novamente na fila.',
+      confirmLabel: 'Confirmar',
+      danger: true,
+    );
+    if (confirmed && context.mounted) goToRootTab(context, 0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final now = TimeOfDay.now();
+    final callTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -107,7 +122,7 @@ class CalledScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton(
-                        onPressed: () => goToRootTab(context, 0),
+                        onPressed: () => _cannotAttend(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white54),
@@ -138,7 +153,7 @@ class CalledScreen extends StatelessWidget {
                 _DetailRow(icon: Icons.groups_outlined, label: 'Serviço', value: service.name),
                 _DetailRow(icon: Icons.place_outlined, label: 'Local', value: location.subtitle),
                 _DetailRow(icon: Icons.access_time, label: 'Tempo de espera', value: '${service.etaMinutes} min'),
-                const _DetailRow(icon: Icons.event_outlined, label: 'Hora da chamada', value: '09:41', isLast: true),
+                _DetailRow(icon: Icons.event_outlined, label: 'Hora da chamada', value: callTime, isLast: true),
               ],
             ),
           ),
@@ -182,7 +197,11 @@ class CalledScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          OutlineButton(label: 'Ver direção até ao local', icon: Icons.near_me_outlined, onTap: () {}),
+          OutlineButton(
+            label: 'Ver direção até ao local',
+            icon: Icons.near_me_outlined,
+            onTap: () => openMapsDirections(context, '${location.name}, ${location.address}'),
+          ),
         ],
       ),
     );

@@ -34,7 +34,13 @@ class LocationSummaryCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.place_outlined, size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text(location.subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                    Flexible(
+                      child: Text(
+                        location.subtitle,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 if (tag != null) ...[
@@ -42,7 +48,11 @@ class LocationSummaryCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(999)),
-                    child: Text(tag!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    child: Text(
+                      tag!,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ],

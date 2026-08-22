@@ -40,9 +40,13 @@ class GradientButton extends StatelessWidget {
                 Icon(icon, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
               ],
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),
@@ -86,7 +90,14 @@ class OutlineButton extends StatelessWidget {
                 Icon(icon, color: color, size: 18),
                 const SizedBox(width: 8),
               ],
-              Text(label, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w700)),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
             ],
           ),
         ),

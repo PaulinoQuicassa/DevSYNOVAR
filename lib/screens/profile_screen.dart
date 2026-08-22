@@ -1,8 +1,30 @@
 import 'package:flutter/material.dart';
+import '../app_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confirm_dialog.dart';
+import 'about_screen.dart';
+import 'help_screen.dart';
+import 'notification_settings_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _signOut(BuildContext context) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Terminar sessão?',
+      message: 'Vais precisar de entrar novamente para veres os teus agendamentos e histórico.',
+      confirmLabel: 'Terminar sessão',
+      danger: true,
+    );
+    if (confirmed && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sessão terminada.')),
+      );
+      goToRootTab(context, 0);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,15 +63,35 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         const _SectionLabel('Conta'),
-        const _ProfileRow(icon: Icons.notifications_none_rounded, label: 'Notificações'),
-        const _ProfileRow(icon: Icons.tune, label: 'Definições'),
-        const _ProfileRow(icon: Icons.language_outlined, label: 'Idioma'),
+        _ProfileRow(
+          icon: Icons.notifications_none_rounded,
+          label: 'Notificações',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+        ),
+        _ProfileRow(
+          icon: Icons.tune,
+          label: 'Definições',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+        ),
         const SizedBox(height: 20),
         const _SectionLabel('Suporte'),
-        const _ProfileRow(icon: Icons.help_outline, label: 'Ajuda e suporte'),
-        const _ProfileRow(icon: Icons.info_outline, label: 'Sobre a Fila Certa'),
+        _ProfileRow(
+          icon: Icons.help_outline,
+          label: 'Ajuda e suporte',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpScreen())),
+        ),
+        _ProfileRow(
+          icon: Icons.info_outline,
+          label: 'Sobre a Fila Certa',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
+        ),
         const SizedBox(height: 20),
-        const _ProfileRow(icon: Icons.logout, label: 'Terminar sessão', danger: true, showDivider: false),
+        _ProfileRow(
+          icon: Icons.logout,
+          label: 'Terminar sessão',
+          danger: true,
+          onTap: () => _signOut(context),
+        ),
       ],
     );
   }
@@ -75,10 +117,10 @@ class _SectionLabel extends StatelessWidget {
 class _ProfileRow extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
   final bool danger;
-  final bool showDivider;
 
-  const _ProfileRow({required this.icon, required this.label, this.danger = false, this.showDivider = true});
+  const _ProfileRow({required this.icon, required this.label, required this.onTap, this.danger = false});
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +129,7 @@ class _ProfileRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),

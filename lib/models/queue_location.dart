@@ -31,21 +31,25 @@ class QueueLocation {
   final String subtitle;
   final String address;
   final String distance;
+  final double distanceKm;
   final int peopleInQueue;
   final int etaMinutes;
   final QueueLoad load;
   final String monogram;
   final Color brandColor;
+  final String phone;
 
   const QueueLocation({
     required this.name,
     required this.subtitle,
     required this.address,
     required this.distance,
+    required this.distanceKm,
     required this.peopleInQueue,
     required this.etaMinutes,
     required this.load,
     required this.monogram,
     required this.brandColor,
+    required this.phone,
   });
 }

@@ -55,16 +55,25 @@ class ServiceCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.groups_outlined, size: 14, color: service.color),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${service.peopleInQueue} na fila',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: service.color),
+                  Icon(Icons.groups_outlined, size: 13, color: service.color),
+                  const SizedBox(width: 3),
+                  Flexible(
+                    child: Text(
+                      '${service.peopleInQueue} na fila',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: service.color),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Text('${service.etaMinutes} min', style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.access_time, size: 13, color: AppColors.textMuted),
+                  const SizedBox(width: 3),
+                  Flexible(
+                    child: Text(
+                      '${service.etaMinutes} min',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ],

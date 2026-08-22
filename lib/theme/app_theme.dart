@@ -6,6 +6,7 @@ class AppColors {
 
   static const primary = Color(0xFF2F5FEA);
   static const primaryDark = Color(0xFF1E3FBF);
+  static const primaryTint = Color(0xFFEAF0FE);
   static const accentPurple = Color(0xFF7C3AED);
 
   static const success = Color(0xFF16A34A);

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
+import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_card.dart';
 import 'choose_location_screen.dart';
+import 'choose_service_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -12,6 +14,12 @@ class HomeScreen extends StatelessWidget {
   void _enterQueue(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (_) => const ChooseLocationScreen()),
+    );
+  }
+
+  void _enterQueueAt(BuildContext context, QueueLocation location) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(builder: (_) => ChooseServiceScreen(location: location)),
     );
   }
 
@@ -123,7 +131,7 @@ class HomeScreen extends StatelessWidget {
           ...nearby.map(
             (loc) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: LocationCard(location: loc, onTap: () => _enterQueue(context)),
+              child: LocationCard(location: loc, onTap: () => _enterQueueAt(context, loc)),
             ),
           ),
         ],

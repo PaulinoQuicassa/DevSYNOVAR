@@ -4,6 +4,8 @@ import '../data/mock_data.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confirm_dialog.dart';
+import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_summary_card.dart';
@@ -17,6 +19,39 @@ class QueueScreen extends StatelessWidget {
 
   const QueueScreen({super.key, required this.location, required this.service});
 
+  Future<void> _leaveQueue(BuildContext context) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Sair da fila?',
+      message: 'Perde a sua posição atual (senha ${MockData.currentTicket}). Vai ter de entrar novamente na fila.',
+      confirmLabel: 'Sair da fila',
+      danger: true,
+    );
+    if (confirmed && context.mounted) goToRootTab(context, 0);
+  }
+
+  void _showHelp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Como funciona a fila?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        content: const Text(
+          'A sua senha avança automaticamente à medida que os balcões atendem. '
+          'Não precisa de estar fisicamente no local — vamos avisá-lo quando estiver quase na sua vez e quando for chamado.',
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Entendi', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FlowScaffold(
@@ -26,7 +61,7 @@ class QueueScreen extends StatelessWidget {
           ScreenHeader(
             title: 'A sua senha',
             trailingIcon: Icons.help_outline,
-            onTrailing: () {},
+            onTrailing: () => _showHelp(context),
           ),
           const SizedBox(height: 8),
           LocationSummaryCard(location: location, tag: service.name),
@@ -184,40 +219,50 @@ class QueueScreen extends StatelessWidget {
                   label: 'Sair da fila',
                   icon: Icons.close,
                   color: AppColors.critical,
-                  onTap: () => goToRootTab(context, 0),
+                  onTap: () => _leaveQueue(context),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
+          Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.support_agent_outlined, size: 18, color: AppColors.primary),
+              onTap: () => showContactSheet(
+                context,
+                title: 'Contactar ${location.name}',
+                phone: location.phone,
+                whatsapp: MockData.supportWhatsapp,
+                email: MockData.supportEmail,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.support_agent_outlined, size: 18, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Precisa de ajuda?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                          SizedBox(height: 2),
+                          Text('Fale com o apoio ao cliente.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    const Text('Contactar', style: TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Precisa de ajuda?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
-                      SizedBox(height: 2),
-                      Text('Fale com o apoio ao cliente.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Text('Contactar', style: TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700)),
-              ],
+              ),
             ),
           ),
         ],

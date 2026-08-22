@@ -8,8 +8,9 @@ import 'fila_certa_bottom_nav.dart';
 /// on any other tab jumps back to [RootShell] from anywhere in the flow.
 class FlowScaffold extends StatelessWidget {
   final Widget body;
+  final int currentIndex;
 
-  const FlowScaffold({super.key, required this.body});
+  const FlowScaffold({super.key, required this.body, this.currentIndex = 2});
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +18,9 @@ class FlowScaffold extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(child: body),
       bottomNavigationBar: FilaCertaBottomNav(
-        currentIndex: 2,
+        currentIndex: currentIndex,
         onTap: (i) {
-          if (i == 2) return;
+          if (i == currentIndex) return;
           goToRootTab(context, i);
         },
       ),

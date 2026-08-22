@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../widgets/confirm_dialog.dart';
+import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_summary_card.dart';
@@ -11,11 +14,90 @@ import '../widgets/screen_header.dart';
 import '../widgets/ticket_progress_row.dart';
 import 'called_screen.dart';
 
-class AlmostScreen extends StatelessWidget {
+class AlmostScreen extends StatefulWidget {
   final QueueLocation location;
   final ServiceItem service;
 
   const AlmostScreen({super.key, required this.location, required this.service});
+
+  @override
+  State<AlmostScreen> createState() => _AlmostScreenState();
+}
+
+class _AlmostScreenState extends State<AlmostScreen> {
+  bool _alertsEnabled = true;
+
+  Future<void> _leaveQueue() async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Sair da fila?',
+      message: 'Perde a sua posição atual (senha ${MockData.currentTicket}). Vai ter de entrar novamente na fila.',
+      confirmLabel: 'Sair da fila',
+      danger: true,
+    );
+    if (confirmed && mounted) goToRootTab(context, 0);
+  }
+
+  Future<void> _openWhatsapp() async {
+    final ok = await launchUrl(
+      Uri.parse('https://wa.me/${MockData.supportWhatsapp}?text=${Uri.encodeComponent("Olá, estou na fila ${MockData.currentTicket} em ${widget.location.name}.")}'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')));
+    }
+  }
+
+  void _showQueueDetails() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(999)),
+                  ),
+                ),
+                const Text('Detalhes da fila', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(widget.service.name, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                const SizedBox(height: 20),
+                const Row(
+                  children: [
+                    _DetailStat(label: 'A sua senha', value: MockData.currentTicket),
+                    _DetailStat(label: 'À sua frente', value: '2'),
+                    _DetailStat(label: 'Balcão', value: MockData.counterNumber),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const TicketProgressRow(
+                  tickets: MockData.ticketProgress,
+                  current: MockData.currentTicket,
+                  bubbleColor: Color(0xFFE4EAFB),
+                  bubbleTextColor: AppColors.primaryDark,
+                  activeColor: AppColors.primary,
+                  activeTextColor: Colors.white,
+                  lineColor: Color(0xFFDCE3F5),
+                  captionColor: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +112,12 @@ class AlmostScreen extends StatelessWidget {
             trailingHasDot: true,
           ),
           const SizedBox(height: 8),
-          LocationSummaryCard(location: location, tag: service.name),
+          LocationSummaryCard(location: widget.location, tag: widget.service.name),
           const SizedBox(height: 16),
           InkWell(
             borderRadius: BorderRadius.circular(24),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => CalledScreen(location: location, service: service)),
+              MaterialPageRoute(builder: (_) => CalledScreen(location: widget.location, service: widget.service)),
             ),
             child: Container(
               width: double.infinity,
@@ -117,19 +199,26 @@ class AlmostScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.chat_bubble_outline, size: 15, color: Color(0xFF25D366)),
-                      SizedBox(height: 2),
-                      Text('WhatsApp', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
-                    ],
+                    onTap: _openWhatsapp,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(Icons.chat_bubble_outline, size: 15, color: Color(0xFF25D366)),
+                          SizedBox(height: 2),
+                          Text('WhatsApp', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -170,20 +259,27 @@ class AlmostScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.list_alt_outlined, size: 16, color: AppColors.textPrimary),
-                      SizedBox(width: 8),
-                      Flexible(child: Text('Ver detalhes da fila', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700))),
-                    ],
+                    onTap: _showQueueDetails,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.list_alt_outlined, size: 16, color: AppColors.textPrimary),
+                          SizedBox(width: 8),
+                          Flexible(child: Text('Ver detalhes da fila', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700))),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -200,7 +296,11 @@ class AlmostScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Flexible(child: Text('Alertas', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700))),
-                      Switch.adaptive(value: true, onChanged: (_) {}, activeThumbColor: AppColors.primary),
+                      Switch.adaptive(
+                        value: _alertsEnabled,
+                        onChanged: (v) => setState(() => _alertsEnabled = v),
+                        activeThumbColor: AppColors.primary,
+                      ),
                     ],
                   ),
                 ),
@@ -212,39 +312,69 @@ class AlmostScreen extends StatelessWidget {
             label: 'Sair da fila',
             icon: Icons.close,
             color: AppColors.critical,
-            onTap: () => goToRootTab(context, 0),
+            onTap: _leaveQueue,
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
+          Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.support_agent_outlined, size: 18, color: AppColors.primary),
+              onTap: () => showContactSheet(
+                context,
+                title: 'Contactar suporte',
+                phone: MockData.supportPhone,
+                whatsapp: MockData.supportWhatsapp,
+                email: MockData.supportEmail,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.support_agent_outlined, size: 18, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Precisa de ajuda?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                          SizedBox(height: 2),
+                          Text('Fale com a nossa equipa de suporte.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    const Text('Contactar suporte', style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Precisa de ajuda?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
-                      SizedBox(height: 2),
-                      Text('Fale com a nossa equipa de suporte.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const Text('Contactar suporte', style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700)),
-              ],
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          const SizedBox(height: 4),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),
     );
