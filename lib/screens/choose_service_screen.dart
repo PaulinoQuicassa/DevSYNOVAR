@@ -136,13 +136,19 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
               ),
             )
           else
-            GridView.count(
-              crossAxisCount: 2,
+            GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.86,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                // Fixed height (independent of screen width) so the card
+                // always has just enough room for a 2-line name + 2-line
+                // description, without ballooning on wide screens or
+                // overflowing on narrow ones.
+                mainAxisExtent: 180,
+              ),
               children: results
                   .map((service) => ServiceCard(service: service, onTap: () => _selectService(context, service)))
                   .toList(),

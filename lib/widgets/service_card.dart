@@ -17,42 +17,45 @@ class ServiceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: service.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(service.icon, color: service.color, size: 22),
+                    child: Icon(service.icon, color: service.color, size: 19),
                   ),
-                  const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+                  const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 service.name,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, height: 1.25),
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.2),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 service.description,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.3),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5, height: 1.3),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Icon(Icons.groups_outlined, size: 13, color: service.color),

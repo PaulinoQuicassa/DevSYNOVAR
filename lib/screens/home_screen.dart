@@ -35,17 +35,21 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Boa tarde,', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                  SizedBox(height: 2),
-                  Text(
-                    'Paulino Quicassa',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-                  ),
-                ],
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Boa tarde,', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    SizedBox(height: 2),
+                    Text(
+                      'Paulino Quicassa',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Container(
                 width: 44,
                 height: 44,

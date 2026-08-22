@@ -14,6 +14,13 @@ void main() {
   });
 
   testWidgets('Fila Certa home screen renders and the queue flow can be opened', (WidgetTester tester) async {
+    // A realistic (narrow) phone width — the default test surface is much
+    // wider than a real phone and would hide layout overflow that only
+    // shows up on an actual device.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(const FilaCertaApp());
     await tester.pumpAndSettle();
 
@@ -30,7 +37,7 @@ void main() {
     // Tall viewport so every screen in this flow fits without scrolling —
     // avoids relying on Scrollable.ensureVisible for elements that sit low
     // on long ListView screens (confirm buttons, QR card, etc).
-    tester.view.physicalSize = const Size(430, 2200);
+    tester.view.physicalSize = const Size(390, 2200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -81,6 +88,13 @@ void main() {
   });
 
   testWidgets('SIAC shows its own real service catalogue, not the bank services', (WidgetTester tester) async {
+    // A realistic (narrow) phone width — the default test surface is much
+    // wider than a real phone and would hide a RenderFlex overflow in the
+    // service card grid that only shows up on an actual device.
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(const FilaCertaApp());
     await tester.pumpAndSettle();
 
