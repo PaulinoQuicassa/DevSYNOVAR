@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Cada utilizador só pode ler/escrever os seus próprios documentos
+// (agendamentos, histórico, preferências), nunca os de outra conta.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

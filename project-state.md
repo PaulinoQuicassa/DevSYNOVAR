@@ -4,7 +4,7 @@ _Última atualização: 2026-08-22_ · Repositório: [github.com/PaulinoQuicassa
 
 ## Estado atual
 
-Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo completo de entrada em fila e de agendamento implementado e navegável, sem botões "mortos", **com persistência local real** (sobrevive a fechar a app). `flutter analyze` limpo, todos os testes automatizados a passar, `flutter build web --release` e `flutter build apk --debug` a compilar sem erros.
+Protótipo Flutter funcional e interativo, agora **com backend real** (Firebase Auth + Firestore): contas de utilizador com email e palavra-passe, agendamentos/histórico/preferências ligados à conta e sincronizados entre dispositivos. Fluxo completo de entrada em fila e de agendamento implementado e navegável, sem botões "mortos". `flutter analyze` limpo, todos os testes automatizados a passar, `flutter build web --release` a compilar sem erros. **Falta um passo manual do utilizador antes de correr a app num dispositivo real**: criar o projeto Firebase e gerar `lib/firebase_options.dart` (ver "Próximos passos").
 
 ## Funcionalidades
 
@@ -18,18 +18,18 @@ Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo com
 - [x] **Novo agendamento** (fluxo completo): escolher local → escolher serviço → escolher data (14 dias) e hora → confirmar → ecrã de confirmação com **QR code real** e código único — **persiste**
 - [x] Agendamentos — lista ligada a estado real (`appointmentsStore`, persistido); cada cartão abre um detalhe com QR e opção de cancelar (com confirmação)
 - [x] Os meus atendimentos — lista ligada a estado real (`historyStore`, persistido); cada cartão abre um detalhe com a avaliação dada
-- [x] Perfil — todas as opções ligadas: Notificações (interruptores reais, persistidos), Definições (idioma persistido + repor dados de demonstração), Ajuda e suporte (FAQ + contacto real), Sobre a Fila Certa, Terminar sessão (com confirmação)
+- [x] Perfil — todas as opções ligadas: Notificações (interruptores reais, sincronizados), Definições (idioma sincronizado + limpar todos os dados da conta), Ajuda e suporte (FAQ + contacto real), Sobre a Fila Certa, Terminar sessão real (com confirmação, `authService.signOut()`)
 - [x] Navegação inferior persistente durante todo o fluxo (fila e agendamento, cada um com o separador certo destacado)
-- [x] **Persistência local em disco** (`shared_preferences`) — agendamentos, histórico, preferências de notificação e idioma sobrevivem a fechar e reabrir a app no mesmo aparelho
+- [x] **Contas de utilizador reais e sincronização entre dispositivos** (Firebase Auth + Firestore) — entrar/criar conta com email e palavra-passe (`LoginScreen`/`SignupScreen`), recuperação de palavra-passe; agendamentos, histórico e preferências (notificações, idioma) ligados à conta (`users/{uid}/...`), não ao aparelho, protegidos por `firestore.rules`
 
 ## Em desenvolvimento
 
-Nada em curso neste momento.
+Nada em curso neste momento. O utilizador ainda precisa de completar a configuração do Firebase do lado dele (ver "Próximos passos") antes de a app correr num dispositivo real.
 
 ## Problemas conhecidos
 
-- Nenhum bug funcional conhecido.
-- Persistência é só local ao dispositivo — sem conta/login, não sincroniza entre aparelhos (não há backend).
+- Nenhum bug funcional conhecido no código já escrito.
+- `lib/firebase_options.dart` é um placeholder que lança erro em runtime — a app não liga a um Firebase real enquanto o utilizador não correr `flutterfire configure` (ver "Próximos passos"). `flutter analyze`/`flutter test`/`flutter build web` já passam mesmo assim, porque nenhum deles executa `Firebase.initializeApp()` de verdade.
 - Sem modo escuro — decisão deliberada, ver `CLAUDE.md` ("O que NÃO alterar sem confirmação").
 - Ilustrações fotorrealistas das imagens de referência foram simplificadas para composições de ícones (limitação de geração de imagem, não um bug).
 - Logótipos dos bancos são monogramas coloridos, não a arte real das marcas (decisão deliberada, para não reproduzir logótipos registados).
@@ -40,17 +40,18 @@ Nada em curso neste momento.
 | Comando | Resultado |
 |---|---|
 | `flutter analyze` | PASS — 0 problemas |
-| `flutter test` | PASS — 10/10 (`widget_test.dart`: smoke test, agendamento ponta a ponta, catálogo SIAC, navegação completa por todos os ecrãs; `persistence_test.dart`: 6 testes de gravação/leitura) |
+| `flutter test` | PASS — 4/4 (`widget_test.dart`: smoke test, agendamento ponta a ponta, catálogo SIAC, navegação completa por todos os ecrãs — cada um autenticado com `MockFirebaseAuth`/`FakeFirebaseFirestore`) |
 | `flutter build web --release` | PASS |
-| `flutter build apk --debug` | PASS — instalado e testado em Android real pelo utilizador |
+| `flutter build apk --debug` | Ainda não repetido desde a mudança para Firebase — precisa de `firebase_options.dart` real primeiro |
 
 ## Arquitetura
 
-Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem gestor de estado externo, sem backend, dados mock + estado em `app_stores.dart` persistido localmente via `persistence.dart` (`shared_preferences`), navegação via `Navigator` + `FlowScaffold`, ações reais do dispositivo via `url_launcher`, QR real via `qr_flutter`.
+Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem gestor de estado externo, backend real (Firebase Auth + Cloud Firestore), dados de localizações/serviços mock + estado de conta (agendamentos/histórico/preferências) em `app_stores.dart` sincronizado em tempo real via Firestore, navegação via `Navigator` + `FlowScaffold`, ações reais do dispositivo via `url_launcher`, QR real via `qr_flutter`.
 
 ## Últimas alterações
 
-- **Persistência local real** adicionada (`shared_preferences`): agendamentos, histórico, notificações e idioma sobrevivem a fechar a app. `Appointment` grava-se como referência (`locationMonogram`+`serviceName`) resolvida contra `MockData` ao carregar; `Visit` grava-se como retrato histórico (campos soltos), com a cor sempre recalculada a partir do `monogram` atual em vez de gravada. `main()` carrega tudo (`hydrateAllStores()`) antes do primeiro `runApp`. Atualizado o aviso em Definições, que já não dizia a verdade.
+- **Backend real adicionado**: Firebase Auth (email+palavra-passe) e Cloud Firestore substituem a persistência local (`shared_preferences`, removida). Novo `lib/auth/auth_service.dart`, ecrãs `AuthGate`/`LoginScreen`/`SignupScreen`, e `app_stores.dart` reescrito para sincronizar cada store (`appointmentsStore`, `historyStore`, `notificationSettings`, `appLanguageController`) com `users/{uid}/...` no Firestore em tempo real. `firestore.rules` criado (cada conta só acede aos seus próprios documentos). Perfil mostra o email real da conta e tem terminar sessão real. Definições ganhou "Limpar todos os dados" (apaga da conta em todos os dispositivos) em vez de "Repor dados de demonstração". Testes reescritos com `firebase_auth_mocks`+`fake_cloud_firestore`, incluindo a correção de uma armadilha real do `firebase_auth_mocks` (o seu `authStateChanges()` não repete o estado já autenticado a um listener tardio — `AuthGate` agora semeia a partir de `authService.currentUser`).
+- **(Anterior) Persistência local real** adicionada (`shared_preferences`, entretanto removida): agendamentos, histórico, notificações e idioma sobreviviam a fechar a app. `main()` carregava tudo (`hydrateAllStores()`) antes do primeiro `runApp`.
 - Corrigida uma inconsistência de dados: o histórico mock do SIAC ainda tinha o nome antigo ("SIAC — Centro de Atendimento") e um serviço genérico, desatualizados desde a mudança para o catálogo real do SIAC.
 - Adicionado um teste de "navegação completa" que visita todos os ecrãs alcançáveis a partir das abas e do Perfil — encontrou e permitiu corrigir mais 3 bugs reais: aviso de `Material`/`ListTile` invisível na Ajuda (FAQ), overflow no ecrã Sobre, overflow na pílula "Tempo estimado" do ecrã da fila.
 - Cartões de serviço tornados mais compactos (menos padding, ícones menores, altura fixa por `mainAxisExtent` em vez de `childAspectRatio`) — já não sobra espaço vazio em baixo. A correção revelou (e resolveu) mais 2 bugs de overflow (`status_pill.dart`, cabeçalho da Home); todos os testes passaram a usar 390px (largura realista de telemóvel) em vez da largura de teste por defeito.
@@ -61,8 +62,17 @@ Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem ge
 - Renomeação completa de "FilaJá" para "Fila Certa" em todos os aspectos (tarefa anterior).
 - Projeto organizado com Claude Code: `git init`, `CLAUDE.md` (raiz), `.claude/agents/flutter.md`, este ficheiro (tarefa anterior).
 
-## Próximos passos (sugestões, não decisões tomadas)
+## Próximos passos
 
+**Obrigatório da parte do utilizador, antes de a app correr num dispositivo real** (ver secção "Configuração do Firebase" em `CLAUDE.md`):
+1. Criar um projeto em [console.firebase.google.com](https://console.firebase.google.com).
+2. Ativar Authentication → Email/Password.
+3. Criar uma base de dados Firestore.
+4. Publicar `firestore.rules` (raiz do repo) nas Regras do Firestore.
+5. Instalar `firebase-tools`/`flutterfire_cli`, correr `flutterfire configure` na raiz do projeto — gera o `lib/firebase_options.dart` real, substituindo o placeholder atual.
+
+Sugestões (não decisões tomadas):
 - Testar as ações `url_launcher` (chamar, WhatsApp, mapas) num dispositivo/emulador real.
-- Decidir se este protótipo vai ganhar um backend real (contas de utilizador, sincronização entre dispositivos, filas ao vivo) ou continuar como demo local.
+- Repetir `flutter build apk --debug` e testar em Android real depois de o Firebase estar configurado.
 - Ecrãs de atendente/supervisor/painel TV existem apenas como conceito visual noutro artefacto — decidir se entram neste repositório Flutter.
+- Sincronização atual cobre só os dados pessoais da conta (agendamentos/histórico/preferências) — filas ao vivo partilhadas entre utilizadores diferentes (lado do atendente/balcão) ficou fora de escopo desta tarefa, por decisão explícita do utilizador.

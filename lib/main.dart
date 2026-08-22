@@ -1,11 +1,12 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'app_stores.dart';
-import 'screens/root_shell.dart';
+import 'firebase_options.dart';
+import 'screens/auth_gate.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await hydrateAllStores();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const FilaCertaApp());
 }
 
@@ -18,7 +19,7 @@ class FilaCertaApp extends StatelessWidget {
       title: 'Fila Certa',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const RootShell(),
+      home: const AuthGate(),
     );
   }
 }

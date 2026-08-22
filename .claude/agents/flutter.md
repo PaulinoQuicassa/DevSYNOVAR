@@ -21,7 +21,7 @@ Não deve alterar sem confirmação explícita do utilizador: `android/**`, `ios
 # Contexto
 
 - Flutter 3.47.1, Dart >=3.3.0, Material 3.
-- Sem backend/API/DB/auth — dados mock (`lib/data/mock_data.dart`), estado em `lib/app_stores.dart` (`appointmentsStore`, `historyStore`, `notificationSettings`, `appLanguageController`), persistido localmente no dispositivo via `lib/persistence.dart` (`SharedPreferences` + JSON) — sobrevive a fechar a app, não sincroniza entre dispositivos.
+- Backend real: Firebase Auth (email+palavra-passe) e Cloud Firestore. Localizações/serviços continuam mock (`lib/data/mock_data.dart`); agendamentos, histórico e preferências vivem em `users/{uid}/...` no Firestore, protegidos por `firestore.rules`. `lib/auth/auth_service.dart` (`authService`, mutável) é o único wrapper de `FirebaseAuth`. Estado em `lib/app_stores.dart` (`appointmentsStore`, `historyStore`, `notificationSettings`, `appLanguageController`), cada um com `listenTo(uid)`/`stopListening()` ligado por `lib/screens/auth_gate.dart` conforme a sessão muda — sincroniza em tempo real entre os dispositivos da mesma conta.
 - Sem gestor de estado externo — `setState` local + `ValueNotifier`/`ChangeNotifier` globais (`lib/app_state.dart`, `lib/app_stores.dart`) para navegação e estado partilhado.
 - Design tokens centralizados em `lib/theme/app_theme.dart` (`AppColors`, `AppTheme`). Sem modo escuro (ver Restrições).
 - Ações do dispositivo real (chamar, WhatsApp, email, mapas) via `url_launcher`, envolvidas em `lib/widgets/contact_sheet.dart`. QR real via `qr_flutter`.
@@ -29,13 +29,15 @@ Não deve alterar sem confirmação explícita do utilizador: `android/**`, `ios
 # Estrutura
 
 ```
-lib/main.dart, app_state.dart, app_stores.dart, persistence.dart
+lib/main.dart, app_state.dart, app_stores.dart, firebase_options.dart (gerado por flutterfire configure)
+lib/auth/auth_service.dart
 lib/theme/app_theme.dart
 lib/models/            (QueueLocation, ServiceItem, Appointment, Visit)
 lib/data/mock_data.dart
-lib/screens/            (~20 ecrãs — fluxo do cliente, fluxo de agendamento, perfil/definições)
+lib/screens/            (~23 ecrãs — auth_gate/login/signup, fluxo do cliente, fluxo de agendamento, perfil/definições)
 lib/widgets/            (componentes partilhados + confirm_dialog.dart, contact_sheet.dart)
-test/widget_test.dart, test/persistence_test.dart
+test/widget_test.dart
+firestore.rules
 ```
 
 # Convenções
@@ -45,7 +47,7 @@ test/widget_test.dart, test/persistence_test.dart
 - Ecrãs dos fluxos "Entrar na fila" e "Novo agendamento" usam `FlowScaffold` (mantém a barra inferior visível; `currentIndex: 2` para fila, `3` para agendamento) e navegam via `Navigator.push` no root navigator.
 - Ficheiros e classes em `lib/widgets/` são componentes reutilizáveis; lógica específica de um ecrã fica no próprio ficheiro de `lib/screens/`.
 - Ação que muda estado do utilizador de forma significativa (sair da fila, cancelar, não comparecer, terminar sessão) passa sempre por `confirmAction(...)` antes de executar.
-- Um `ValueNotifier`/`ChangeNotifier` global mutável em `app_stores.dart` (padrão: `AppointmentsStore`) tem `hydrate()` (chamado uma vez a partir de `hydrateAllStores()` em `main.dart`, antes do `runApp`) e persiste em `Persistence.save...()` (fire-and-forget via `unawaited(...)`) depois de cada mutação — nunca deixar um store novo só em memória.
+- Um `ValueNotifier`/`ChangeNotifier` global mutável em `app_stores.dart` (padrão: `AppointmentsStore`) tem `listenTo(uid)`/`stopListening()` (chamados por `AuthGate` via `startUserDataSync`/`stopUserDataSync` quando a sessão muda) e escreve em Firestore sob `users/{uid}/...` (fire-and-forget via `unawaited(...)`) depois de cada mutação — nunca deixar um store novo só em memória. Usar sempre a variável mutável `firestoreInstance`, nunca `FirebaseFirestore.instance` diretamente, para o store continuar testável com `FakeFirebaseFirestore`.
 
 # Testes
 
@@ -54,7 +56,7 @@ flutter analyze   # deve devolver "No issues found!"
 flutter test      # deve passar (todas as suites)
 ```
 
-Correr sempre os dois antes de considerar uma alteração terminada. Ao adicionar um novo `ValueNotifier`/`ChangeNotifier` global mutável em `app_stores.dart`, dar-lhe um método `reset()`, um `hydrate()`, persistência em `persistence.dart`, e cobrir os três em `test/persistence_test.dart` + resetá-lo no `setUp()` de `test/widget_test.dart`. Ao adicionar um ecrã novo, acrescentar a visita a esse ecrã no teste "every reachable screen ... renders without layout errors" em `test/widget_test.dart`.
+Correr sempre os dois antes de considerar uma alteração terminada. Ao adicionar um novo `ValueNotifier`/`ChangeNotifier` global mutável em `app_stores.dart`, dar-lhe `listenTo(uid)`/`stopListening()` seguindo o padrão dos stores existentes, e ligá-lo em `startUserDataSync`/`stopUserDataSync`. Ao adicionar um ecrã novo, acrescentar a visita a esse ecrã no teste "every reachable screen ... renders without layout errors" em `test/widget_test.dart`.
 
 # Armadilhas conhecidas
 
@@ -62,7 +64,8 @@ Correr sempre os dois antes de considerar uma alteração terminada. Ao adiciona
 - `.withOpacity()` está depreciado nesta versão do Flutter — usar `.withValues(alpha: x)`.
 - `Switch`/`Switch.adaptive` usa `activeThumbColor`, não `activeColor` (depreciado).
 - Texto/label dentro de um `Row` que pode ser longo (nomes, datas formatadas, labels dinâmicos) TEM de estar em `Flexible`/`Expanded` com `overflow: TextOverflow.ellipsis`, ou transborda (`RenderFlex overflowed`) em ecrãs estreitos — já aconteceu em `GradientButton`, `LocationSummaryCard`, `ServiceCard`, `StatusPill`, `AboutScreen`, no cabeçalho da Home e na pílula "Tempo estimado" da fila.
-- Testes usando `Persistence`/qualquer store que grave em `SharedPreferences` precisam de `SharedPreferences.setMockInitialValues({})` no `setUp()` — sem isto, `SharedPreferences.getInstance()` falha por não haver plataforma real no ambiente de teste.
+- Testes que pumpam `FilaCertaApp` precisam de `authService`/`firestoreInstance` (globais mutáveis) apontados para `MockFirebaseAuth`/`FakeFirebaseFirestore` **antes** do `pumpWidget` — ver `_signInFakeUser()` em `test/widget_test.dart`. Sem isto, `AuthGate` tenta falar com o Firebase real (inexistente em teste) e o teste bloqueia.
+- `MockFirebaseAuth.authStateChanges()` (`firebase_auth_mocks`) é um stream broadcast simples — **não repete** o estado já autenticado a um listener que subscreve depois de `signedIn: true` já ter sido processado no construtor. `AuthGate` contorna isto semeando o estado inicial a partir de `authService.currentUser` de forma síncrona, e só depois subscreve o stream para mudanças futuras — não remover essa sementeira inicial, senão os testes ficam presos a mostrar sempre `LoginScreen`.
 - Um `ExpansionTile`/`ListTile` dentro de um `Container` com `BoxDecoration` colorida dispara o aviso "background color or ink splashes may be invisible" — usar `Material(color: ..., shape: RoundedRectangleBorder(...), clipBehavior: Clip.antiAlias, child: ...)` em vez de `Container(decoration: ...)`.
 - **Os testes usam sempre `tester.view.physicalSize` com uma largura realista de telemóvel (390px), nunca a largura de teste por defeito (~800px)** — a largura por defeito é larga demais e esconde overflows que só aparecem num telemóvel real. Já apanhou bugs reais que a largura por defeito não apanhava (`status_pill.dart`, cabeçalho da Home). Ao escrever um novo teste, copiar este padrão em vez de omitir o viewport.
 - Para cartões de grelha com conteúdo de texto variável (nome/descrição de serviço), preferir `SliverGridDelegateWithFixedCrossAxisCount` com `mainAxisExtent` fixo em vez de `GridView.count`/`childAspectRatio` — a altura fica desacoplada da largura do ecrã, o que evita overflow em ecrãs estreitos que um `childAspectRatio` calibrado só para ecrãs largos não apanha.
@@ -77,7 +80,7 @@ Correr sempre os dois antes de considerar uma alteração terminada. Ao adiciona
 
 # Segurança
 
-Nenhum dado sensível neste projeto (tudo mock). Nada a proteger além do habitual (não adicionar chaves de API reais em código-fonte, se algum dia existirem).
+Há agora contas de utilizador reais. A fronteira de segurança é `firestore.rules` (não a chave de API do Firebase, que não é secreta — é normal e esperado que `firebase_options.dart` seja versionado): garante sempre que qualquer coleção/documento novo debaixo de `users/{uid}/...` continua coberto pela regra existente (`request.auth.uid == userId`) antes de o usar; não criar coleções fora desse padrão sem atualizar `firestore.rules` a condizer.
 
 # Ferramentas
 

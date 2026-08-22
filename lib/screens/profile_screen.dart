@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app_state.dart';
+import '../auth/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confirm_dialog.dart';
 import 'about_screen.dart';
@@ -18,16 +18,14 @@ class ProfileScreen extends StatelessWidget {
       confirmLabel: 'Terminar sessão',
       danger: true,
     );
-    if (confirmed && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sessão terminada.')),
-      );
-      goToRootTab(context, 0);
+    if (confirmed) {
+      await authService.signOut();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final email = authService.currentUser?.email ?? '';
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
@@ -48,13 +46,17 @@ class ProfileScreen extends StatelessWidget {
                 child: const Icon(Icons.person, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Paulino Quicassa', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 3),
-                    Text('paulino.quicassa@hotmail.com', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const Text('A minha conta', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text(
+                      email,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),

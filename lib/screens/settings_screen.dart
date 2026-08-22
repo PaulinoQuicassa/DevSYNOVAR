@@ -39,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: 'Português (Angola)',
                   selected: appLanguageController.value == 'pt',
                   onTap: () {
-                    appLanguageController.value = 'pt';
+                    appLanguageController.setLanguage('pt');
                     Navigator.of(sheetContext).pop();
                   },
                 ),
@@ -52,20 +52,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _resetDemoData() async {
+  Future<void> _clearAllData() async {
     final confirmed = await confirmAction(
       context,
-      title: 'Repor dados de demonstração?',
-      message: 'Os agendamentos e o histórico voltam ao estado inicial. Esta ação não pode ser desfeita.',
-      confirmLabel: 'Repor',
+      title: 'Limpar todos os dados?',
+      message: 'Os teus agendamentos e o histórico são apagados da tua conta em todos os dispositivos. Esta ação não pode ser desfeita.',
+      confirmLabel: 'Limpar',
       danger: true,
     );
     if (confirmed) {
-      appointmentsStore.reset();
-      historyStore.reset();
+      await Future.wait([appointmentsStore.clearAll(), historyStore.clearAll()]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Dados de demonstração repostos.')),
+          const SnackBar(content: Text('Dados apagados.')),
         );
       }
     }
@@ -103,17 +102,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               borderRadius: BorderRadius.circular(14),
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: _resetDemoData,
+                onTap: _clearAllData,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
                   child: const Row(
                     children: [
-                      Icon(Icons.restart_alt, size: 19, color: AppColors.critical),
+                      Icon(Icons.delete_outline, size: 19, color: AppColors.critical),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Repor dados de demonstração',
+                          'Limpar todos os dados',
                           style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.critical),
                         ),
                       ),
@@ -124,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Este protótipo não tem servidor — os agendamentos e o histórico ficam guardados apenas neste telemóvel, não sincronizam com outros dispositivos.',
+              'Os teus agendamentos, histórico e preferências ficam guardados na tua conta e sincronizam automaticamente entre os teus dispositivos.',
               style: TextStyle(fontSize: 11.5, color: AppColors.textMuted, height: 1.4),
             ),
           ],

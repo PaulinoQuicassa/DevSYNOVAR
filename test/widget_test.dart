@@ -1,22 +1,90 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fila_certa_app/app_state.dart';
 import 'package:fila_certa_app/app_stores.dart';
+import 'package:fila_certa_app/auth/auth_service.dart';
 import 'package:fila_certa_app/data/mock_data.dart';
 import 'package:fila_certa_app/main.dart';
 
+const _testUid = 'test-uid';
+
+/// Seeds the fake Firestore with the same appointments/history the old
+/// local-only seed data used to provide, so the widget tests below still
+/// have something realistic to navigate through.
+Future<void> _seedAccount(FakeFirebaseFirestore db) async {
+  final bai = MockData.locations[2];
+  final bci = MockData.locations[3];
+
+  final appointments = db.collection('users').doc(_testUid).collection('appointments');
+  await appointments.doc('AG-1042').set({
+    'locationMonogram': bai.monogram,
+    'serviceName': bai.services[3].name,
+    'date': Timestamp.fromDate(DateTime(2026, 8, 22, 10, 30)),
+    'time': '10:30',
+  });
+  await appointments.doc('AG-1077').set({
+    'locationMonogram': bci.monogram,
+    'serviceName': bci.services[2].name,
+    'date': Timestamp.fromDate(DateTime(2026, 8, 25, 14, 0)),
+    'time': '14:00',
+  });
+
+  final history = db.collection('users').doc(_testUid).collection('history');
+  await history.add({
+    'bank': 'Banco de Poupança e Crédito (BPC)',
+    'monogram': 'BPC',
+    'service': 'Atendimento Balcão',
+    'date': 'Hoje, 09:41',
+    'ticket': 'A023',
+    'status': 'completed',
+    'rating': 5,
+    'createdAt': Timestamp.fromDate(DateTime(2026, 8, 21, 9, 41)),
+  });
+  await history.add({
+    'bank': 'Banco BFA',
+    'monogram': 'BFA',
+    'service': 'Depósitos e Levantamentos',
+    'date': 'Ontem, 15:12',
+    'ticket': 'B104',
+    'status': 'completed',
+    'rating': 4,
+    'createdAt': Timestamp.fromDate(DateTime(2026, 8, 20, 15, 12)),
+  });
+  await history.add({
+    'bank': 'SIAC — Serviço Integrado de Atendimento ao Cidadão',
+    'monogram': 'SIAC',
+    'service': 'Bilhete de Identidade',
+    'date': '14 Ago, 11:05',
+    'ticket': 'C051',
+    'status': 'missed',
+    'createdAt': Timestamp.fromDate(DateTime(2026, 8, 14, 11, 5)),
+  });
+}
+
+/// Points `authService`/`firestoreInstance` (both mutable globals, see
+/// `lib/auth/auth_service.dart` and `lib/app_stores.dart`) at a fake,
+/// already-signed-in account, so `AuthGate` goes straight to `RootShell`
+/// instead of `LoginScreen`.
+Future<void> _signInFakeUser({bool seed = true}) async {
+  authService = AuthService(
+    auth: MockFirebaseAuth(
+      signedIn: true,
+      mockUser: MockUser(uid: _testUid, email: 'teste@filacerta.ao'),
+    ),
+  );
+  final db = FakeFirebaseFirestore();
+  firestoreInstance = db;
+  if (seed) await _seedAccount(db);
+}
+
 void main() {
-  setUp(() {
-    // Widget tests build FilaCertaApp directly (bypassing main()), so
-    // hydrateAllStores() never runs here — but store methods still fire
-    // SharedPreferences writes. This gives them an in-memory fake instead
-    // of hitting a real (unavailable) platform channel.
-    SharedPreferences.setMockInitialValues({});
+  setUp(() async {
     rootTabController.value = 0;
-    appointmentsStore.reset();
-    historyStore.reset();
+    await _signInFakeUser();
   });
 
   testWidgets('Fila Certa home screen renders and the queue flow can be opened', (WidgetTester tester) async {
@@ -157,7 +225,7 @@ void main() {
     // --- Perfil tab and every screen reachable from it ---
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
-    expect(find.text('Paulino Quicassa'), findsOneWidget);
+    expect(find.text('teste@filacerta.ao'), findsOneWidget);
 
     await tester.tap(find.text('Notificações'));
     await tester.pumpAndSettle();
