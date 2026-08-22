@@ -26,6 +26,7 @@ lib/
 
 - `Imagensdeecrans/` — mockups de referência (gerados fora do projeto) que guiaram o design "FilaJá"/"Fila Certa".
 - `scripts/serve_web.js` — servidor estático simples para pré-visualizar `flutter build web` localmente.
+- Cada `QueueLocation` tem o seu próprio `services: List<ServiceItem>` — os bancos (BPC/BFA/BAI/BCI) partilham `MockData.bankServices`; o SIAC usa `MockData.siacServices`, um catálogo real (Bilhete de Identidade, Registo Civil, Trânsito/DTSER, Passaporte/SME, Cartório Notarial, Registo Automóvel, Registo Comercial, Registo Predial, NIF/AGT, INSS, Ficheiro Central, CAEC, Administração Distrital). Ao adicionar uma localização nova, nunca reaproveitar `bankServices` para um tipo de balcão diferente — criar (ou escolher) a lista de serviços certa para esse tipo de entidade.
 
 ### Ecrãs
 

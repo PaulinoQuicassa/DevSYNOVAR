@@ -1,6 +1,6 @@
 # Estado do Projeto — Fila Certa
 
-_Última atualização: 2026-08-22_
+_Última atualização: 2026-08-22_ · Testado em Android real pelo utilizador (build + instalação confirmadas a funcionar).
 
 ## Estado atual
 
@@ -10,7 +10,7 @@ Protótipo Flutter funcional e interativo, cliente-only (sem backend). Fluxo com
 
 - [x] Home com CTA "Entrar numa fila" e localizações próximas (tocar num cartão vai direto ao serviço desse local)
 - [x] Escolher localização — pesquisa real (filtra por nome/agência/morada), filtro "próximos de si" (≤5 km) vs "todas", estado vazio quando não há resultados
-- [x] Escolher serviço — pesquisa real por nome/descrição
+- [x] Escolher serviço — pesquisa real por nome/descrição; **cada localização tem o seu próprio catálogo de serviços** (bancos: atendimento/depósitos/cartões/crédito; SIAC: catálogo real com 13 serviços — BI, Registo Civil, Trânsito/DTSER, Passaporte/SME, Cartório Notarial, Registo Automóvel, Registo Comercial, Registo Predial, NIF/AGT, INSS, Ficheiro Central, CAEC, Administração Distrital)
 - [x] Ecrã "A sua senha" — número, progresso da fila, balcão, confirmação antes de sair da fila, folha de contacto real (telefone/WhatsApp/email do banco)
 - [x] Ecrã "Está quase" — alerta, WhatsApp real (`wa.me`), interruptor de alertas com estado próprio, folha de "detalhes da fila", confirmação antes de sair
 - [x] Ecrã "É a sua vez" — chamada, hora real, direções reais via Google Maps, confirmação antes de "não posso comparecer"
@@ -32,15 +32,16 @@ Nada em curso neste momento.
 - Sem modo escuro — decisão deliberada, ver `CLAUDE.md` ("O que NÃO alterar sem confirmação").
 - Ilustrações fotorrealistas das imagens de referência foram simplificadas para composições de ícones (limitação de geração de imagem, não um bug).
 - Logótipos dos bancos são monogramas coloridos, não a arte real das marcas (decisão deliberada, para não reproduzir logótipos registados).
-- Ações de `url_launcher` (chamar, WhatsApp, email, mapas) não puderam ser testadas em dispositivo real nesta sessão (sem emulador/telemóvel ligado) — só validadas por compilação e revisão de código.
+- Ações de `url_launcher` (chamar, WhatsApp, email, mapas) ainda não foram testadas manualmente num dispositivo real (só validadas por compilação e revisão de código).
 
 ## Testes
 
 | Comando | Resultado |
 |---|---|
 | `flutter analyze` | PASS — 0 problemas |
-| `flutter test` | PASS — 2/2 (smoke test + fluxo completo de agendamento) |
+| `flutter test` | PASS — 3/3 (smoke test + fluxo completo de agendamento + catálogo de serviços do SIAC) |
 | `flutter build web --release` | PASS |
+| `flutter build apk --debug` | PASS — instalado e testado em Android real pelo utilizador |
 
 ## Arquitetura
 
@@ -48,6 +49,8 @@ Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem ge
 
 ## Últimas alterações
 
+- `QueueLocation` passou a ter o seu próprio catálogo de serviços (`services`) em vez de todas as localizações partilharem a mesma lista genérica de banco. O SIAC recebeu um catálogo real de 13 serviços (BI, Registo Civil, Trânsito/DTSER, Passaporte/SME, Cartório Notarial, Registo Automóvel, Registo Comercial, Registo Predial, NIF/AGT, INSS, Ficheiro Central, CAEC, Administração Distrital), com dados fornecidos pelo utilizador sobre o portal oficial do SIAC.
+- Confirmado a funcionar em Android real (o utilizador instalou e testou o `app-debug.apk` num dispositivo/emulador ligado, depois de instalar o Android SDK e o JDK).
 - Passagem completa de "torna a app funcional": eliminados todos os botões sem ação (`onTap: () {}`), criado o fluxo de "Novo agendamento" de ponta a ponta (com QR code real), criadas 8 telas novas (agendamento, detalhes de agendamento/atendimento, notificações, definições, ajuda, sobre), pesquisa e filtros passaram a filtrar de verdade, ações de contacto/mapas/WhatsApp abrem apps reais via `url_launcher`.
 - Corrigidos 4 bugs reais de overflow de layout (`RenderFlex overflowed`) descobertos pelo novo teste end-to-end — texto longo sem `Flexible`/`ellipsis` em `GradientButton`, `LocationSummaryCard`, `ServiceCard` e no cartão de agendamento.
 - Renomeação completa de "FilaJá" para "Fila Certa" em todos os aspectos (tarefa anterior).

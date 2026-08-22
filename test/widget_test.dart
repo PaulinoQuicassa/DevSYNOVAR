@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Selecione o serviço que pretende.'), findsOneWidget);
 
-    final service = MockData.services.first;
+    final service = location.services.first;
     await tester.tap(find.text(service.name));
     await tester.pumpAndSettle();
     expect(find.text('Escolher data'), findsOneWidget);
@@ -78,5 +78,26 @@ void main() {
     // Back on Agendamentos, the freshly created appointment is now listed.
     expect(find.text('Marque hora e evite esperar na fila.'), findsOneWidget);
     expect(find.text(location.name), findsOneWidget);
+  });
+
+  testWidgets('SIAC shows its own real service catalogue, not the bank services', (WidgetTester tester) async {
+    await tester.pumpWidget(const FilaCertaApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Entrar numa fila'));
+    await tester.pumpAndSettle();
+
+    final siac = MockData.locations.firstWhere((l) => l.monogram == 'SIAC');
+    await tester.tap(find.text(siac.name));
+    await tester.pumpAndSettle();
+
+    // Real SIAC services show up...
+    expect(find.text('Bilhete de Identidade'), findsOneWidget);
+    expect(find.text('Passaporte e Residência'), findsOneWidget);
+    expect(find.text('NIF — AGT'), findsOneWidget);
+
+    // ...and bank-only services don't leak into the citizen service centre.
+    expect(find.text('Depósitos e Levantamentos'), findsNothing);
+    expect(find.text('Crédito Habitação'), findsNothing);
   });
 }

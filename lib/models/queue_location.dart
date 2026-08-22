@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'service_item.dart';
 
 enum QueueLoad { low, medium, high }
 
@@ -38,6 +39,7 @@ class QueueLocation {
   final String monogram;
   final Color brandColor;
   final String phone;
+  final List<ServiceItem> services;
 
   const QueueLocation({
     required this.name,
@@ -51,5 +53,6 @@ class QueueLocation {
     required this.monogram,
     required this.brandColor,
     required this.phone,
+    required this.services,
   });
 }

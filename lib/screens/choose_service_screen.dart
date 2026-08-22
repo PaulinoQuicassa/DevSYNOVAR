@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
@@ -33,9 +32,10 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
   }
 
   List<ServiceItem> get _filtered {
-    if (_query.trim().isEmpty) return MockData.services;
+    final all = widget.location.services;
+    if (_query.trim().isEmpty) return all;
     final q = _query.trim().toLowerCase();
-    return MockData.services.where((s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q)).toList();
+    return all.where((s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q)).toList();
   }
 
   void _selectService(BuildContext context, ServiceItem service) {

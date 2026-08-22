@@ -11,14 +11,14 @@ List<Appointment> _seedAppointments() => [
       Appointment(
         code: 'AG-1042',
         location: MockData.locations[2],
-        service: MockData.services[3],
+        service: MockData.bankServices[3],
         date: DateTime(2026, 8, 22, 10, 30),
         time: '10:30',
       ),
       Appointment(
         code: 'AG-1077',
         location: MockData.locations[3],
-        service: MockData.services[2],
+        service: MockData.bankServices[2],
         date: DateTime(2026, 8, 25, 14, 0),
         time: '14:00',
       ),
