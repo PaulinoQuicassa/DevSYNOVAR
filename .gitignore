@@ -49,3 +49,6 @@ app.*.map.json
 
 # Claude Code session-local artifacts (not project config)
 .claude/scheduled_tasks.lock
+
+# Firebase CLI local deploy cache
+.firebase/

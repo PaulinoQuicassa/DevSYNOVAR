@@ -1,6 +1,6 @@
 # Estado do Projeto — Fila Certa
 
-_Última atualização: 2026-08-22_ · Repositório: [github.com/PaulinoQuicassa/DevSYNOVAR](https://github.com/PaulinoQuicassa/DevSYNOVAR) (privado) · Testado em Android real pelo utilizador (build + instalação confirmadas a funcionar).
+_Última atualização: 2026-08-24_ · Repositório: [github.com/PaulinoQuicassa/DevSYNOVAR](https://github.com/PaulinoQuicassa/DevSYNOVAR) (privado) · Versão web publicada em [filacerta-d74f0.web.app](https://filacerta-d74f0.web.app) (Firebase Hosting) — link permanente, útil para testar em iOS (não há build iOS neste ambiente Windows, precisa de Mac+Xcode).
 
 ## Estado atual
 
@@ -49,6 +49,7 @@ Ver `CLAUDE.md` para detalhes de stack, estrutura e convenções. Resumo: sem ge
 
 ## Últimas alterações
 
+- **Versão web publicada no Firebase Hosting**: [filacerta-d74f0.web.app](https://filacerta-d74f0.web.app) — link permanente e público (embora o URL não seja divulgado), útil sobretudo para testar num iPhone, já que este ambiente Windows não consegue compilar uma app iOS nativa (precisa de Mac + Xcode). `firebase.json` ganhou a secção `hosting` (aponta para `build/web`, com rewrite de SPA para `index.html`); `.firebaserc` fixa o projeto por omissão (`filacerta-d74f0`). Para publicar uma atualização no futuro: `flutter build web --release` seguido de `firebase deploy --only hosting`.
 - **Ligação ao Firebase real concluída**: o utilizador criou o projeto `filacerta-d74f0` no consola Firebase, ativou Email/Password, criou o Firestore e publicou `firestore.rules`; depois instalámos `firebase-tools`+`flutterfire_cli` e corremos `firebase login`+`flutterfire configure`, que gerou `lib/firebase_options.dart` real (Android/iOS/macOS/web/Windows) e `android/app/google-services.json`, e aplicou o plugin Gradle do Google Services. `flutter build apk --debug` e `flutter build web --release` confirmados a compilar com a configuração real.
 - **Backend real adicionado**: Firebase Auth (email+palavra-passe) e Cloud Firestore substituem a persistência local (`shared_preferences`, removida). Novo `lib/auth/auth_service.dart`, ecrãs `AuthGate`/`LoginScreen`/`SignupScreen`, e `app_stores.dart` reescrito para sincronizar cada store (`appointmentsStore`, `historyStore`, `notificationSettings`, `appLanguageController`) com `users/{uid}/...` no Firestore em tempo real. `firestore.rules` criado (cada conta só acede aos seus próprios documentos). Perfil mostra o email real da conta e tem terminar sessão real. Definições ganhou "Limpar todos os dados" (apaga da conta em todos os dispositivos) em vez de "Repor dados de demonstração". Testes reescritos com `firebase_auth_mocks`+`fake_cloud_firestore`, incluindo a correção de uma armadilha real do `firebase_auth_mocks` (o seu `authStateChanges()` não repete o estado já autenticado a um listener tardio — `AuthGate` agora semeia a partir de `authService.currentUser`).
 - **(Anterior) Persistência local real** adicionada (`shared_preferences`, entretanto removida): agendamentos, histórico, notificações e idioma sobreviviam a fechar a app. `main()` carregava tudo (`hydrateAllStores()`) antes do primeiro `runApp`.
