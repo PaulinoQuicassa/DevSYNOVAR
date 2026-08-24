@@ -181,3 +181,26 @@ Future<void> cancelAppointmentMirror({
       .doc('${_branchPath(institutionId, branchId)}/appointments/$code')
       .update({'status': 'cancelled'});
 }
+
+/// Avaliação do cliente depois de concluído o atendimento (RatingScreen)
+/// — id do documento é o próprio ticketId, um por senha; alimenta o
+/// resumo de qualidade do dashboard da equipa.
+Future<void> submitRating({
+  required LiveTicketRef ref,
+  required String customerUid,
+  required String serviceName,
+  required int overall,
+  required bool recommend,
+  required String comment,
+  required Map<String, int> aspects,
+}) {
+  return firestoreInstance.doc('${_branchPath(ref.institutionId, ref.branchId)}/ratings/${ref.ticketId}').set({
+    'customerUid': customerUid,
+    'serviceName': serviceName,
+    'overall': overall,
+    'recommend': recommend,
+    'comment': comment,
+    'aspects': aspects,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+}

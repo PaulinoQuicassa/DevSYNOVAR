@@ -1,22 +1,46 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
+import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
+import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../models/visit.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_summary_card.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/star_rating.dart';
 
+// Chaves fixas partilhadas com Rating/RatingAspects em
+// fila-certa-staff/src/types.ts, para o dashboard agregar por aspeto.
+const _aspectFirestoreKeys = {
+  'Atendimento do colaborador': 'atendimento',
+  'Tempo de espera': 'tempoEspera',
+  'Organização do serviço': 'organizacao',
+  'Instalações e ambiente': 'instalacoes',
+};
+
 class RatingScreen extends StatefulWidget {
   final QueueLocation location;
   final ServiceItem service;
+  final LiveTicketRef? liveTicket;
+  final String? ticketCode;
+  final String? counterLabel;
 
-  const RatingScreen({super.key, required this.location, required this.service});
+  const RatingScreen({
+    super.key,
+    required this.location,
+    required this.service,
+    this.liveTicket,
+    this.ticketCode,
+    this.counterLabel,
+  });
 
   @override
   State<RatingScreen> createState() => _RatingScreenState();
@@ -49,6 +73,7 @@ class _RatingScreenState extends State<RatingScreen> {
   }
 
   void _submit() {
+    final displayCode = widget.ticketCode ?? MockData.currentTicket;
     historyStore.addCompleted(
       visit: Visit(
         bank: widget.location.name,
@@ -56,11 +81,26 @@ class _RatingScreenState extends State<RatingScreen> {
         color: widget.location.brandColor,
         service: widget.service.name,
         date: 'Hoje, agora',
-        ticket: MockData.currentTicket,
+        ticket: displayCode,
         status: VisitStatus.completed,
         rating: _overall,
       ),
     );
+    final ref = widget.liveTicket;
+    final customerUid = authService.currentUser?.uid;
+    if (ref != null && customerUid != null) {
+      unawaited(ticket_service.submitRating(
+        ref: ref,
+        customerUid: customerUid,
+        serviceName: widget.service.name,
+        overall: _overall,
+        recommend: _recommend ?? true,
+        comment: _commentController.text.trim(),
+        aspects: {
+          for (final entry in _aspectRatings.entries) _aspectFirestoreKeys[entry.key]!: entry.value,
+        },
+      ));
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Avaliação enviada. Obrigado pelo seu feedback!')),
     );
@@ -69,6 +109,8 @@ class _RatingScreenState extends State<RatingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final displayCode = widget.ticketCode ?? MockData.currentTicket;
+    final counterDisplay = widget.counterLabel ?? MockData.counterNumber;
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
@@ -82,14 +124,14 @@ class _RatingScreenState extends State<RatingScreen> {
           const SizedBox(height: 8),
           LocationSummaryCard(
             location: widget.location,
-            trailing: const Column(
+            trailing: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('Senha', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                Text(MockData.currentTicket, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                SizedBox(height: 6),
-                Text('Balcão', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                Text(MockData.counterNumber, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                const Text('Senha', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(displayCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                const SizedBox(height: 6),
+                const Text('Balcão', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(counterDisplay, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
               ],
             ),
           ),
