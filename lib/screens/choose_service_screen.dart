@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../app_state.dart';
 import '../auth/auth_service.dart';
-import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
@@ -70,6 +70,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
         serviceName: service.name,
         customerUid: authService.currentUser!.uid,
       );
+      activeTicketStore.value = ref;
       if (!context.mounted) return;
       Navigator.of(context).pop(); // fecha o spinner
       Navigator.of(context).push(

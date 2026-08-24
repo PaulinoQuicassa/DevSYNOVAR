@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'app_state.dart';
 import 'firebase_options.dart';
 import 'screens/auth_gate.dart';
 import 'theme/app_theme.dart';
@@ -18,6 +19,7 @@ class FilaCertaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Fila Certa',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: AppTheme.light,
       home: const AuthGate(),
     );

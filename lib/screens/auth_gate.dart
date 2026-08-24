@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../app_state.dart';
 import '../app_stores.dart';
 import '../auth/auth_service.dart';
+import '../widgets/global_queue_alerts.dart';
 import 'login_screen.dart';
 import 'root_shell.dart';
 
@@ -47,6 +49,7 @@ class _AuthGateState extends State<AuthGate> {
         stopUserDataSync();
         _syncedUid = null;
       }
+      activeTicketStore.value = null;
     } else if (_syncedUid != user.uid) {
       startUserDataSync(user.uid);
       _syncedUid = user.uid;
@@ -61,6 +64,6 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return _user == null ? const LoginScreen() : const RootShell();
+    return _user == null ? const LoginScreen() : const GlobalQueueAlerts(child: RootShell());
   }
 }
