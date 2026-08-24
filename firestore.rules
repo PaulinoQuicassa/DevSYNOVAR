@@ -2,10 +2,33 @@ rules_version = '2';
 
 // Cada utilizador só pode ler/escrever os seus próprios documentos
 // (agendamentos, histórico, preferências), nunca os de outra conta.
+//
+// As colecções staff/** e institutions/** pertencem ao app separado de
+// equipa (agente/painel público/dashboard, repositório fila-certa-staff)
+// — mesmo projecto Firebase, código diferente. Manter este ficheiro
+// sincronizado com fila-certa-staff/firestore.rules sempre que uma das
+// duas mudar.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Perfil de um membro de equipa (agente/gestor) — só o próprio lê;
+    // atribuição de função/instituição feita manualmente, não pelo utilizador.
+    match /staff/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Fila ao vivo de uma instituição (ecrã de agente, painel público,
+    // dashboard). Leitura para qualquer utilizador autenticado (inclui
+    // sessão anónima do painel público de TV) — sem dados pessoais do
+    // cliente aqui. Escrita só por um membro de equipa dessa instituição.
+    match /institutions/{institutionId}/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.institutionId == institutionId;
     }
   }
 }
