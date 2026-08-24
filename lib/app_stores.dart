@@ -7,6 +7,7 @@ import 'models/appointment.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
 import 'models/visit.dart';
+import 'ticket_service.dart' as ticket_service;
 
 /// App-wide stores. Held in memory for instant UI updates, and mirrored to
 /// Firestore under `users/{uid}/...` so agendamentos/histórico/preferências
@@ -85,6 +86,19 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
       'date': Timestamp.fromDate(appointment.date),
       'time': appointment.time,
     }));
+    final institutionId = appointment.location.institutionId;
+    final branchId = appointment.location.branchId;
+    if (institutionId != null && branchId != null) {
+      unawaited(ticket_service.scheduleAppointment(
+        institutionId: institutionId,
+        branchId: branchId,
+        code: appointment.code,
+        customerUid: uid,
+        serviceName: appointment.service.name,
+        date: appointment.date,
+        time: appointment.time,
+      ));
+    }
   }
 
   void cancel(Appointment appointment) {
@@ -92,6 +106,15 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
     if (uid == null) return;
     value = value.where((a) => a.code != appointment.code).toList();
     unawaited(_collection(uid).doc(appointment.code).delete());
+    final institutionId = appointment.location.institutionId;
+    final branchId = appointment.location.branchId;
+    if (institutionId != null && branchId != null) {
+      unawaited(ticket_service.cancelAppointmentMirror(
+        institutionId: institutionId,
+        branchId: branchId,
+        code: appointment.code,
+      ));
+    }
   }
 
   Future<void> clearAll() async {

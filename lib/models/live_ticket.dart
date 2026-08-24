@@ -27,6 +27,17 @@ class LiveTicketRef {
   });
 }
 
+/// Quem causou `status == 'no_show'` — espelha `NoShowReason` de
+/// `fila-certa-staff/src/types.ts`.
+enum NoShowReason { customerCancelled, staffMarked, unknown }
+
+NoShowReason? noShowReasonFromString(String? s) => switch (s) {
+      'customer_cancelled' => NoShowReason.customerCancelled,
+      'staff_marked' => NoShowReason.staffMarked,
+      null => null,
+      _ => NoShowReason.unknown,
+    };
+
 /// Leitura de `institutions/{institutionId}/branches/{branchId}/tickets/{ticketId}`.
 class LiveTicket {
   final String code;
@@ -35,6 +46,7 @@ class LiveTicket {
   final String? counterId;
   final DateTime? createdAt;
   final DateTime? calledAt;
+  final NoShowReason? noShowReason;
 
   const LiveTicket({
     required this.code,
@@ -43,6 +55,7 @@ class LiveTicket {
     this.counterId,
     this.createdAt,
     this.calledAt,
+    this.noShowReason,
   });
 }
 
@@ -52,6 +65,7 @@ class LiveTicket {
 class LiveBoardEntry {
   final String code;
   final String counterLabel;
+  final DateTime? updatedAt;
 
-  const LiveBoardEntry({required this.code, required this.counterLabel});
+  const LiveBoardEntry({required this.code, required this.counterLabel, this.updatedAt});
 }

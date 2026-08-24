@@ -22,6 +22,7 @@ LiveTicket? _ticketFromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     counterId: data['counterId'] as String?,
     createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     calledAt: (data['calledAt'] as Timestamp?)?.toDate(),
+    noShowReason: noShowReasonFromString(data['noShowReason'] as String?),
   );
 }
 
@@ -86,13 +87,24 @@ Future<String?> getCounterLabel(String institutionId, String branchId, String co
 /// última senha chamada e em que balcão.
 Stream<LiveBoardEntry?> subscribeLiveBoardCurrent(String institutionId, String branchId) {
   return firestoreInstance.doc('${_branchPath(institutionId, branchId)}/liveBoard/current').snapshots().map((snap) {
-    final current = snap.data()?['current'] as Map<String, dynamic>?;
+    final data = snap.data();
+    final current = data?['current'] as Map<String, dynamic>?;
     if (current == null) return null;
     return LiveBoardEntry(
       code: current['code'] as String? ?? '',
       counterLabel: current['counterLabel'] as String? ?? '',
+      updatedAt: (data?['updatedAt'] as Timestamp?)?.toDate(),
     );
   });
+}
+
+/// Estado do balcão (disponível/em atendimento/pausa) — usado pelo cliente
+/// para saber se o balcão que o está a atender está de momento em pausa.
+Stream<String?> subscribeCounterStatus(String institutionId, String branchId, String counterId) {
+  return firestoreInstance
+      .doc('${_branchPath(institutionId, branchId)}/counters/$counterId')
+      .snapshots()
+      .map((snap) => snap.data()?['status'] as String?);
 }
 
 /// Quantas senhas em espera foram criadas antes da minha — mesma forma de
@@ -115,11 +127,57 @@ Stream<int> subscribeWaitingAhead(LiveTicketRef ref, DateTime myCreatedAt) {
 }
 
 /// O próprio cliente desiste da senha (sair da fila, ou avisar que não
-/// pode comparecer) — só muda `status`, nunca mais nada; fire-and-forget
-/// pelos ecrãs, para não bloquear a navegação nem rebentar se a regra
-/// recusar (ex.: senha já concluída).
+/// pode comparecer já depois de chamado) — muda `status` e regista a
+/// origem (`noShowReason`) para os KPIs do dashboard distinguirem de uma
+/// ausência marcada pela equipa. Fire-and-forget pelos ecrãs, para não
+/// bloquear a navegação nem rebentar se a regra recusar (ex.: senha já
+/// concluída).
 Future<void> cancelTicket(LiveTicketRef ref) {
   return firestoreInstance
       .doc('${_branchPath(ref.institutionId, ref.branchId)}/tickets/${ref.ticketId}')
-      .update({'status': 'no_show'});
+      .update({'status': 'no_show', 'noShowReason': 'customer_cancelled'});
+}
+
+/// O cliente avisa que está a caminho do balcão — o ecrã do agente mostra
+/// isto em tempo real junto da senha em atendimento.
+Future<void> setOnTheWay(LiveTicketRef ref) {
+  return firestoreInstance
+      .doc('${_branchPath(ref.institutionId, ref.branchId)}/tickets/${ref.ticketId}')
+      .update({'customerOnTheWay': true});
+}
+
+/// Espelho, visível à equipa, de um agendamento que o cliente marca em
+/// users/{uid}/appointments (privado) — só chamado para a localização
+/// piloto (ver `AppointmentsStore.add`). O id do documento é o mesmo
+/// `code` do agendamento privado, para os dois lados ficarem ligados.
+Future<void> scheduleAppointment({
+  required String institutionId,
+  required String branchId,
+  required String code,
+  required String customerUid,
+  required String serviceName,
+  required DateTime date,
+  required String time,
+}) {
+  return firestoreInstance.doc('${_branchPath(institutionId, branchId)}/appointments/$code').set({
+    'customerUid': customerUid,
+    'serviceName': serviceName,
+    'date': Timestamp.fromDate(date),
+    'time': time,
+    'createdAt': FieldValue.serverTimestamp(),
+    'status': 'scheduled',
+  });
+}
+
+/// Marca o espelho institucional do agendamento como cancelado — nunca
+/// apagado, para o KPI "Agendamentos hoje" continuar a contar
+/// correctamente quantos foram marcados hoje.
+Future<void> cancelAppointmentMirror({
+  required String institutionId,
+  required String branchId,
+  required String code,
+}) {
+  return firestoreInstance
+      .doc('${_branchPath(institutionId, branchId)}/appointments/$code')
+      .update({'status': 'cancelled'});
 }
