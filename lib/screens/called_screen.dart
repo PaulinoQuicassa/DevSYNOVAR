@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
@@ -15,7 +16,7 @@ import '../widgets/gradient_button.dart';
 import '../widgets/screen_header.dart';
 import 'rating_screen.dart';
 
-class CalledScreen extends StatelessWidget {
+class CalledScreen extends StatefulWidget {
   final QueueLocation location;
   final ServiceItem service;
   final LiveTicketRef? liveTicket;
@@ -31,8 +32,137 @@ class CalledScreen extends StatelessWidget {
     this.counterLabel,
   });
 
+  @override
+  State<CalledScreen> createState() => _CalledScreenState();
+}
+
+class _CalledScreenState extends State<CalledScreen> {
+  LiveTicket? _ticket;
+  String? _counterStatus;
+  bool _onTheWaySent = false;
+  bool _handledTransition = false;
+  DateTime? _lastBoardUpdatedAt;
+
+  StreamSubscription<LiveTicket?>? _ticketSub;
+  StreamSubscription<LiveBoardEntry?>? _boardSub;
+  StreamSubscription<String?>? _counterSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final ref = widget.liveTicket;
+    if (ref == null) return;
+    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate);
+    _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen(_onBoardUpdate);
+  }
+
+  @override
+  void dispose() {
+    _ticketSub?.cancel();
+    _boardSub?.cancel();
+    _counterSub?.cancel();
+    super.dispose();
+  }
+
+  void _onTicketUpdate(LiveTicket? ticket) {
+    if (!mounted) return;
+    final previousStatus = _ticket?.status;
+    setState(() => _ticket = ticket);
+    if (ticket == null) return;
+
+    final ref = widget.liveTicket;
+    final counterId = ticket.counterId;
+    if (ref != null && counterId != null && _counterSub == null) {
+      _counterSub = ticket_service.subscribeCounterStatus(ref.institutionId, ref.branchId, counterId).listen((status) {
+        if (mounted) setState(() => _counterStatus = status);
+      });
+    }
+
+    if (_handledTransition) return;
+    if (ticket.status == TicketStatus.done && previousStatus != TicketStatus.done) {
+      _handledTransition = true;
+      _announceThenNavigate(
+        message: 'O seu atendimento foi concluído.',
+        builder: () => RatingScreen(location: widget.location, service: widget.service),
+      );
+    } else if (ticket.status == TicketStatus.waiting && previousStatus == TicketStatus.serving) {
+      _handledTransition = true;
+      _announceThenPop('A sua senha foi transferida e voltou à fila de espera.');
+    } else if (ticket.status == TicketStatus.noShow &&
+        ticket.noShowReason == NoShowReason.staffMarked &&
+        previousStatus != TicketStatus.noShow) {
+      _handledTransition = true;
+      _announceThenGoRoot('Foi marcado como ausente por não ter comparecido.');
+    }
+  }
+
+  void _onBoardUpdate(LiveBoardEntry? entry) {
+    if (!mounted || entry == null) return;
+    final myCode = _ticket?.code ?? widget.ticketCode;
+    final isRecall = myCode != null &&
+        entry.code == myCode &&
+        _lastBoardUpdatedAt != null &&
+        entry.updatedAt != null &&
+        entry.updatedAt != _lastBoardUpdatedAt;
+    _lastBoardUpdatedAt = entry.updatedAt ?? _lastBoardUpdatedAt;
+    if (!isRecall) return;
+    HapticFeedback.mediumImpact();
+    SystemSound.play(SystemSoundType.alert);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Estão a chamar-te novamente!')),
+    );
+  }
+
+  Future<void> _announceThenNavigate({required String message, required Widget Function() builder}) async {
+    await _showInfoDialog(message);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => builder()));
+  }
+
+  Future<void> _announceThenPop(String message) async {
+    await _showInfoDialog(message);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _announceThenGoRoot(String message) async {
+    await _showInfoDialog(message);
+    if (!mounted) return;
+    goToRootTab(context, 0);
+  }
+
+  Future<void> _showInfoDialog(String message) {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Text(message, style: const TextStyle(fontSize: 13.5, height: 1.4)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Entendi', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onTheWay() async {
+    final ref = widget.liveTicket;
+    if (ref != null) {
+      setState(() => _onTheWaySent = true);
+      unawaited(ticket_service.setOnTheWay(ref));
+    }
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => RatingScreen(location: widget.location, service: widget.service)),
+    );
+  }
+
   Future<void> _cannotAttend(BuildContext context) async {
-    final displayCode = ticketCode ?? MockData.currentTicket;
+    final displayCode = _ticket?.code ?? widget.ticketCode ?? MockData.currentTicket;
     final confirmed = await confirmAction(
       context,
       title: 'Não pode comparecer?',
@@ -41,18 +171,20 @@ class CalledScreen extends StatelessWidget {
       danger: true,
     );
     if (!confirmed) return;
-    final ref = liveTicket;
+    final ref = widget.liveTicket;
     if (ref != null) unawaited(ticket_service.cancelTicket(ref));
     if (context.mounted) goToRootTab(context, 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final wired = liveTicket != null;
-    final displayCode = wired ? (ticketCode ?? '…') : MockData.currentTicket;
-    final counterDisplay = wired ? (counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
+    final wired = widget.liveTicket != null;
+    final displayCode = wired ? (_ticket?.code ?? widget.ticketCode ?? '…') : MockData.currentTicket;
+    final counterDisplay = wired ? (widget.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     final now = TimeOfDay.now();
     final callTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final counterPaused = _counterStatus == 'paused';
+
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -64,6 +196,24 @@ class CalledScreen extends StatelessWidget {
             trailingHasDot: true,
           ),
           const SizedBox(height: 8),
+          if (counterPaused)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(color: AppColors.warningBg, borderRadius: BorderRadius.circular(14)),
+              child: const Row(
+                children: [
+                  Icon(Icons.pause_circle_outline, color: AppColors.warning, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'O balcão está em pausa neste momento. Aguarde, vai ser retomado em breve.',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -114,7 +264,7 @@ class CalledScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                '${location.name}\n${location.subtitle}',
+                                '${widget.location.name}\n${widget.location.subtitle}',
                                 style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.3),
                               ),
                             ),
@@ -171,9 +321,9 @@ class CalledScreen extends StatelessWidget {
               children: [
                 const Text('Detalhes do atendimento', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
                 const SizedBox(height: 12),
-                _DetailRow(icon: Icons.groups_outlined, label: 'Serviço', value: service.name),
-                _DetailRow(icon: Icons.place_outlined, label: 'Local', value: location.subtitle),
-                _DetailRow(icon: Icons.access_time, label: 'Tempo de espera', value: '${service.etaMinutes} min'),
+                _DetailRow(icon: Icons.groups_outlined, label: 'Serviço', value: widget.service.name),
+                _DetailRow(icon: Icons.place_outlined, label: 'Local', value: widget.location.subtitle),
+                _DetailRow(icon: Icons.access_time, label: 'Tempo de espera', value: '${widget.service.etaMinutes} min'),
                 _DetailRow(icon: Icons.event_outlined, label: 'Hora da chamada', value: callTime, isLast: true),
               ],
             ),
@@ -209,19 +359,17 @@ class CalledScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           GradientButton(
-            label: 'Estou a caminho',
+            label: _onTheWaySent ? 'Aviso enviado ✓' : 'Estou a caminho',
             icon: Icons.check_circle_outline,
             gradient: const LinearGradient(colors: [AppColors.success, Color(0xFF15803D)]),
             shadowColor: AppColors.success,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => RatingScreen(location: location, service: service)),
-            ),
+            onTap: _onTheWay,
           ),
           const SizedBox(height: 10),
           OutlineButton(
             label: 'Ver direção até ao local',
             icon: Icons.near_me_outlined,
-            onTap: () => openMapsDirections(context, '${location.name}, ${location.address}'),
+            onTap: () => openMapsDirections(context, '${widget.location.name}, ${widget.location.address}'),
           ),
         ],
       ),
