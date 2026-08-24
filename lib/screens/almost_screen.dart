@@ -180,67 +180,61 @@ class _AlmostScreenState extends State<AlmostScreen> {
           const SizedBox(height: 8),
           LocationSummaryCard(location: widget.location, tag: widget.service.name),
           const SizedBox(height: 16),
-          InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => CalledScreen(location: widget.location, service: widget.service)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: AppColors.almostGradient,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 14))],
             ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: AppColors.almostGradient,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 14))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: const BoxDecoration(color: AppColors.amber, shape: BoxShape.circle),
-                        child: const Icon(Icons.notifications_active, color: Colors.white, size: 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(color: AppColors.amber, shape: BoxShape.circle),
+                      child: const Icon(Icons.notifications_active, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Está quase a sua vez!',
+                        style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Text(
-                          'Está quase na sua vez!',
-                          style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Faltam apenas algumas pessoas para a sua chamada.',
-                    style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.4),
-                  ),
-                  const SizedBox(height: 22),
-                  const Row(
-                    children: [
-                      Expanded(child: _AlmostStat(value: '2', label: 'pessoas\nà sua frente')),
-                      Expanded(child: _AlmostStat(value: '5 min', label: 'tempo\nestimado')),
-                      Expanded(child: _AlmostStat(value: MockData.counterNumber, label: 'Balcão')),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Container(height: 1, color: Colors.white24),
-                  const SizedBox(height: 16),
-                  TicketProgressRow(
-                    tickets: MockData.ticketProgress,
-                    current: MockData.currentTicket,
-                    bubbleColor: Colors.white.withValues(alpha: 0.18),
-                    bubbleTextColor: Colors.white,
-                    activeColor: AppColors.amber,
-                    activeTextColor: Colors.white,
-                    lineColor: Colors.white24,
-                    captionColor: AppColors.amber,
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Faltam apenas algumas pessoas para a sua chamada.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.4),
+                ),
+                const SizedBox(height: 22),
+                const Row(
+                  children: [
+                    Expanded(child: _AlmostStat(value: '2', label: 'pessoas\nà sua frente')),
+                    Expanded(child: _AlmostStat(value: '5 min', label: 'tempo\nestimado')),
+                    Expanded(child: _AlmostStat(value: MockData.counterNumber, label: 'Balcão')),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(height: 1, color: Colors.white24),
+                const SizedBox(height: 16),
+                TicketProgressRow(
+                  tickets: MockData.ticketProgress,
+                  current: MockData.currentTicket,
+                  bubbleColor: Colors.white.withValues(alpha: 0.18),
+                  bubbleTextColor: Colors.white,
+                  activeColor: AppColors.amber,
+                  activeTextColor: Colors.white,
+                  lineColor: Colors.white24,
+                  captionColor: AppColors.amber,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
