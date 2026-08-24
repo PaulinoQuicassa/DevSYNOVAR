@@ -83,7 +83,13 @@ class _CalledScreenState extends State<CalledScreen> {
       _handledTransition = true;
       _announceThenNavigate(
         message: 'O seu atendimento foi concluído.',
-        builder: () => RatingScreen(location: widget.location, service: widget.service),
+        builder: () => RatingScreen(
+          location: widget.location,
+          service: widget.service,
+          liveTicket: widget.liveTicket,
+          ticketCode: _ticket?.code ?? widget.ticketCode,
+          counterLabel: widget.counterLabel,
+        ),
       );
     } else if (ticket.status == TicketStatus.waiting && previousStatus == TicketStatus.serving) {
       _handledTransition = true;
