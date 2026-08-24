@@ -150,14 +150,13 @@ class _CalledScreenState extends State<CalledScreen> {
   }
 
   Future<void> _onTheWay() async {
+    if (_onTheWaySent) return;
     final ref = widget.liveTicket;
-    if (ref != null) {
-      setState(() => _onTheWaySent = true);
-      unawaited(ticket_service.setOnTheWay(ref));
-    }
+    setState(() => _onTheWaySent = true);
+    if (ref != null) unawaited(ticket_service.setOnTheWay(ref));
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => RatingScreen(location: widget.location, service: widget.service)),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Avisámos o balcão que está a caminho.')),
     );
   }
 
@@ -363,7 +362,7 @@ class _CalledScreenState extends State<CalledScreen> {
             icon: Icons.check_circle_outline,
             gradient: const LinearGradient(colors: [AppColors.success, Color(0xFF15803D)]),
             shadowColor: AppColors.success,
-            onTap: _onTheWay,
+            onTap: _onTheWaySent ? null : _onTheWay,
           ),
           const SizedBox(height: 10),
           OutlineButton(
