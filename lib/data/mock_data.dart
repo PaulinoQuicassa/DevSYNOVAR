@@ -166,7 +166,66 @@ class MockData {
     ),
   ];
 
+  // Serviços do balcão piloto (institutionId/branchId reais — ver
+  // `locations` abaixo) — mesmos nomes usados pelo seed da app da equipa
+  // (fila-certa-staff/scripts/seed-prod.mjs), para os textos baterem certo
+  // dos dois lados.
+  static const pilotServices = <ServiceItem>[
+    ServiceItem(
+      name: 'Abertura de conta',
+      description: 'Abertura de conta à ordem ou poupança',
+      peopleInQueue: 3,
+      etaMinutes: 15,
+      icon: Icons.account_balance_wallet_outlined,
+      color: Color(0xFF0F766E),
+    ),
+    ServiceItem(
+      name: 'Cartão bancário',
+      description: 'Pedidos, desbloqueios e informações de cartões',
+      peopleInQueue: 2,
+      etaMinutes: 10,
+      icon: Icons.credit_card_outlined,
+      color: Color(0xFF7C3AED),
+    ),
+    ServiceItem(
+      name: 'Empréstimo',
+      description: 'Informações e processos de crédito',
+      peopleInQueue: 4,
+      etaMinutes: 18,
+      icon: Icons.description_outlined,
+      color: Color(0xFFEA7C2F),
+    ),
+    ServiceItem(
+      name: 'Reclamação',
+      description: 'Registo e acompanhamento de reclamações',
+      peopleInQueue: 1,
+      etaMinutes: 8,
+      icon: Icons.support_agent_outlined,
+      color: Color(0xFFDC2626),
+    ),
+  ];
+
   static const locations = <QueueLocation>[
+    // Localização piloto — ligada a dados reais no Firestore (ver
+    // QueueLocation.institutionId/branchId). As restantes continuam
+    // puramente mock: bancos reais sem backend por trás, propositadamente,
+    // para não sugerir que têm dados ao vivo.
+    QueueLocation(
+      name: 'Banco Exemplo',
+      subtitle: 'Agência Maianga — piloto ao vivo',
+      address: 'Maianga, Luanda',
+      distance: '—',
+      distanceKm: 0,
+      peopleInQueue: 0,
+      etaMinutes: 0,
+      load: QueueLoad.low,
+      monogram: 'BEX',
+      brandColor: Color(0xFF0F766E),
+      phone: '+244923000199',
+      services: pilotServices,
+      institutionId: 'banco-exemplo',
+      branchId: 'agencia-maianga',
+    ),
     QueueLocation(
       name: 'Banco de Poupança e Crédito (BPC)',
       subtitle: 'Agência Talatona',

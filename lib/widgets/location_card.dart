@@ -63,6 +63,13 @@ class LocationCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 6,
                       children: [
+                        if (location.institutionId != null)
+                          const StatusPill(
+                            label: 'Piloto ao vivo',
+                            color: Color(0xFF0F766E),
+                            background: Color(0xFFCCFBF1),
+                            icon: Icons.podcasts,
+                          ),
                         StatusPill(
                           label: '${location.peopleInQueue} pessoas na fila',
                           color: location.load.color,

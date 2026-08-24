@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
+import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
@@ -12,22 +16,94 @@ import '../widgets/location_summary_card.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/ticket_progress_row.dart';
 import 'almost_screen.dart';
+import 'called_screen.dart';
 
-class QueueScreen extends StatelessWidget {
+class QueueScreen extends StatefulWidget {
   final QueueLocation location;
   final ServiceItem service;
+  final LiveTicketRef? liveTicket;
 
-  const QueueScreen({super.key, required this.location, required this.service});
+  const QueueScreen({super.key, required this.location, required this.service, this.liveTicket});
+
+  @override
+  State<QueueScreen> createState() => _QueueScreenState();
+}
+
+class _QueueScreenState extends State<QueueScreen> {
+  LiveTicket? _ticket;
+  LiveBoardEntry? _liveBoardEntry;
+  int _peopleAhead = 0;
+  bool _navigatedToCalled = false;
+
+  StreamSubscription<LiveTicket?>? _ticketSub;
+  StreamSubscription<LiveBoardEntry?>? _boardSub;
+  StreamSubscription<int>? _aheadSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final ref = widget.liveTicket;
+    if (ref == null) return;
+    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate);
+    _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen((entry) {
+      if (mounted) setState(() => _liveBoardEntry = entry);
+    });
+  }
+
+  void _onTicketUpdate(LiveTicket? ticket) {
+    if (!mounted) return;
+    final wasSubscribedToAhead = _ticket != null;
+    setState(() => _ticket = ticket);
+    if (!wasSubscribedToAhead && ticket?.createdAt != null) {
+      _aheadSub = ticket_service.subscribeWaitingAhead(widget.liveTicket!, ticket!.createdAt!).listen((count) {
+        if (mounted) setState(() => _peopleAhead = count);
+      });
+    }
+    if (ticket?.status == TicketStatus.serving && !_navigatedToCalled) {
+      _navigatedToCalled = true;
+      _goToCalled(ticket!);
+    }
+  }
+
+  Future<void> _goToCalled(LiveTicket ticket) async {
+    final counterLabel = ticket.counterId == null
+        ? null
+        : await ticket_service.getCounterLabel(widget.liveTicket!.institutionId, widget.liveTicket!.branchId, ticket.counterId!);
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CalledScreen(
+          location: widget.location,
+          service: widget.service,
+          liveTicket: widget.liveTicket,
+          ticketCode: ticket.code,
+          counterLabel: counterLabel,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticketSub?.cancel();
+    _boardSub?.cancel();
+    _aheadSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> _leaveQueue(BuildContext context) async {
+    final displayCode = _ticket?.code ?? MockData.currentTicket;
     final confirmed = await confirmAction(
       context,
       title: 'Sair da fila?',
-      message: 'Perde a sua posição atual (senha ${MockData.currentTicket}). Vai ter de entrar novamente na fila.',
+      message: 'Perde a sua posição atual (senha $displayCode). Vai ter de entrar novamente na fila.',
       confirmLabel: 'Sair da fila',
       danger: true,
     );
-    if (confirmed && context.mounted) goToRootTab(context, 0);
+    if (!confirmed) return;
+    final ref = widget.liveTicket;
+    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (context.mounted) goToRootTab(context, 0);
   }
 
   void _showHelp(BuildContext context) {
@@ -54,6 +130,13 @@ class QueueScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final wired = widget.liveTicket != null;
+    final displayCode = wired ? (_ticket?.code ?? '…') : MockData.currentTicket;
+    final lastCalledCode = wired ? (_liveBoardEntry?.code ?? '—') : MockData.lastCalledTicket;
+    final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
+    final peopleAheadText = wired ? '$_peopleAhead' : '4';
+    final etaText = wired ? '${_peopleAhead * 5} min' : '12 min';
+
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -64,7 +147,7 @@ class QueueScreen extends StatelessWidget {
             onTrailing: () => _showHelp(context),
           ),
           const SizedBox(height: 8),
-          LocationSummaryCard(location: location, tag: service.name),
+          LocationSummaryCard(location: widget.location, tag: widget.service.name),
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
@@ -78,24 +161,24 @@ class QueueScreen extends StatelessWidget {
               children: [
                 const Text('A sua senha é', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                const Text(
-                  MockData.currentTicket,
-                  style: TextStyle(color: Colors.white, fontSize: 68, fontWeight: FontWeight.w800, height: 1.05),
+                Text(
+                  displayCode,
+                  style: const TextStyle(color: Colors.white, fontSize: 68, fontWeight: FontWeight.w800, height: 1.05),
                 ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time, size: 15, color: Colors.white),
-                      SizedBox(width: 6),
+                      const Icon(Icons.access_time, size: 15, color: Colors.white),
+                      const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          'Tempo estimado: 12 min',
+                          'Tempo estimado: $etaText',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -104,12 +187,14 @@ class QueueScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    const Expanded(
-                      child: _HeroStat(icon: Icons.groups_outlined, value: '4', label: 'pessoas\nà sua frente'),
+                    Expanded(
+                      child: _HeroStat(icon: Icons.groups_outlined, value: peopleAheadText, label: 'pessoas\nà sua frente'),
                     ),
                     Container(width: 1, height: 44, color: Colors.white24),
-                    const Expanded(
-                      child: _HeroStat(icon: Icons.inbox_outlined, value: MockData.counterNumber, label: 'Balcão'),
+                    Expanded(
+                      child: wired
+                          ? _HeroStat(icon: Icons.category_outlined, value: widget.service.name, label: 'Serviço')
+                          : _HeroStat(icon: Icons.inbox_outlined, value: MockData.counterNumber, label: 'Balcão'),
                     ),
                   ],
                 ),
@@ -120,26 +205,26 @@ class QueueScreen extends StatelessWidget {
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Última senha chamada', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                            SizedBox(height: 4),
-                            Text(MockData.lastCalledTicket, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                            const Text('Última senha chamada', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const SizedBox(height: 4),
+                            Text(lastCalledCode, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                           ],
                         ),
                       ),
                       Container(width: 1, height: 34, color: AppColors.border),
-                      const Expanded(
+                      Expanded(
                         child: Padding(
-                          padding: EdgeInsets.only(left: 16),
+                          padding: const EdgeInsets.only(left: 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Em atendimento no balcão', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                              SizedBox(height: 4),
-                              Text(MockData.counterNumber, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                              const Text('Em atendimento no balcão', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                              const SizedBox(height: 4),
+                              Text(servingCounterLabel, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                             ],
                           ),
                         ),
@@ -151,33 +236,34 @@ class QueueScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
+          if (!wired)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Progresso da fila', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  SizedBox(height: 14),
+                  TicketProgressRow(
+                    tickets: MockData.ticketProgress,
+                    current: MockData.currentTicket,
+                    bubbleColor: Color(0xFFE4EAFB),
+                    bubbleTextColor: AppColors.primaryDark,
+                    activeColor: AppColors.primary,
+                    activeTextColor: Colors.white,
+                    lineColor: Color(0xFFDCE3F5),
+                    captionColor: AppColors.primary,
+                  ),
+                ],
+              ),
             ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Progresso da fila', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                SizedBox(height: 14),
-                TicketProgressRow(
-                  tickets: MockData.ticketProgress,
-                  current: MockData.currentTicket,
-                  bubbleColor: Color(0xFFE4EAFB),
-                  bubbleTextColor: AppColors.primaryDark,
-                  activeColor: AppColors.primary,
-                  activeTextColor: Colors.white,
-                  lineColor: Color(0xFFDCE3F5),
-                  captionColor: AppColors.primary,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+          if (!wired) const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFFEAF0FE), borderRadius: BorderRadius.circular(16)),
@@ -215,7 +301,9 @@ class QueueScreen extends StatelessWidget {
                   label: 'Acompanhar fila',
                   icon: Icons.visibility_outlined,
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => AlmostScreen(location: location, service: service)),
+                    MaterialPageRoute(
+                      builder: (_) => AlmostScreen(location: widget.location, service: widget.service, liveTicket: widget.liveTicket),
+                    ),
                   ),
                 ),
               ),
@@ -238,8 +326,8 @@ class QueueScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               onTap: () => showContactSheet(
                 context,
-                title: 'Contactar ${location.name}',
-                phone: location.phone,
+                title: 'Contactar ${widget.location.name}',
+                phone: widget.location.phone,
                 whatsapp: MockData.supportWhatsapp,
                 email: MockData.supportEmail,
               ),
@@ -294,7 +382,13 @@ class _HeroStat extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.white, size: 16),
             const SizedBox(width: 6),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, height: 1)),
+            Flexible(
+              child: Text(
+                value,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, height: 1),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),

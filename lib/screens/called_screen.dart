@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
+import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
@@ -14,22 +18,39 @@ import 'rating_screen.dart';
 class CalledScreen extends StatelessWidget {
   final QueueLocation location;
   final ServiceItem service;
+  final LiveTicketRef? liveTicket;
+  final String? ticketCode;
+  final String? counterLabel;
 
-  const CalledScreen({super.key, required this.location, required this.service});
+  const CalledScreen({
+    super.key,
+    required this.location,
+    required this.service,
+    this.liveTicket,
+    this.ticketCode,
+    this.counterLabel,
+  });
 
   Future<void> _cannotAttend(BuildContext context) async {
+    final displayCode = ticketCode ?? MockData.currentTicket;
     final confirmed = await confirmAction(
       context,
       title: 'Não pode comparecer?',
-      message: 'A sua senha ${MockData.currentTicket} será libertada e outra pessoa será chamada. Terá de entrar novamente na fila.',
+      message: 'A sua senha $displayCode será libertada e outra pessoa será chamada. Terá de entrar novamente na fila.',
       confirmLabel: 'Confirmar',
       danger: true,
     );
-    if (confirmed && context.mounted) goToRootTab(context, 0);
+    if (!confirmed) return;
+    final ref = liveTicket;
+    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (context.mounted) goToRootTab(context, 0);
   }
 
   @override
   Widget build(BuildContext context) {
+    final wired = liveTicket != null;
+    final displayCode = wired ? (ticketCode ?? '…') : MockData.currentTicket;
+    final counterDisplay = wired ? (counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     final now = TimeOfDay.now();
     final callTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return FlowScaffold(
@@ -72,15 +93,15 @@ class CalledScreen extends StatelessWidget {
                       const SizedBox(height: 22),
                       const Text('Senha', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      const Text(
-                        MockData.currentTicket,
-                        style: TextStyle(color: Colors.white, fontSize: 58, fontWeight: FontWeight.w800, height: 1.05),
+                      Text(
+                        displayCode,
+                        style: const TextStyle(color: Colors.white, fontSize: 58, fontWeight: FontWeight.w800, height: 1.05),
                       ),
                       const SizedBox(height: 16),
                       const Text('Dirija-se ao', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                      const Text(
-                        'BALCÃO ${MockData.counterNumber}',
-                        style: TextStyle(color: AppColors.amber, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                      Text(
+                        counterDisplay.toUpperCase(),
+                        style: const TextStyle(color: AppColors.amber, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                       ),
                       const SizedBox(height: 16),
                       Container(

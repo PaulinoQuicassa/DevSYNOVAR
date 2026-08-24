@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../auth/auth_service.dart';
+import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/flow_scaffold.dart';
 import '../widgets/info_banner.dart';
 import '../widgets/location_summary_card.dart';
@@ -38,14 +41,45 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
     return all.where((s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q)).toList();
   }
 
-  void _selectService(BuildContext context, ServiceItem service) {
+  Future<void> _selectService(BuildContext context, ServiceItem service) async {
     if (widget.isScheduling) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ScheduleDateTimeScreen(location: widget.location, service: service)),
       );
-    } else {
+      return;
+    }
+
+    final institutionId = widget.location.institutionId;
+    final branchId = widget.location.branchId;
+    if (institutionId == null || branchId == null) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: service)),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final ref = await ticket_service.pullTicket(
+        institutionId: institutionId,
+        branchId: branchId,
+        serviceName: service.name,
+        customerUid: authService.currentUser!.uid,
+      );
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // fecha o spinner
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: service, liveTicket: ref)),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // fecha o spinner
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível tirar a senha. Tente novamente.')),
       );
     }
   }

@@ -41,6 +41,14 @@ class QueueLocation {
   final String phone;
   final List<ServiceItem> services;
 
+  /// Quando ambos definidos, esta localização está ligada a dados reais
+  /// no Firestore (`institutions/{institutionId}/branches/{branchId}`) —
+  /// tirar uma senha aqui cria um documento real, visível na app da
+  /// equipa. `null` (o caso das restantes localizações) mantém o
+  /// comportamento mock/estático de sempre.
+  final String? institutionId;
+  final String? branchId;
+
   const QueueLocation({
     required this.name,
     required this.subtitle,
@@ -54,5 +62,7 @@ class QueueLocation {
     required this.brandColor,
     required this.phone,
     required this.services,
+    this.institutionId,
+    this.branchId,
   });
 }

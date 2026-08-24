@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
+import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
@@ -17,8 +21,9 @@ import 'called_screen.dart';
 class AlmostScreen extends StatefulWidget {
   final QueueLocation location;
   final ServiceItem service;
+  final LiveTicketRef? liveTicket;
 
-  const AlmostScreen({super.key, required this.location, required this.service});
+  const AlmostScreen({super.key, required this.location, required this.service, this.liveTicket});
 
   @override
   State<AlmostScreen> createState() => _AlmostScreenState();
@@ -27,20 +32,77 @@ class AlmostScreen extends StatefulWidget {
 class _AlmostScreenState extends State<AlmostScreen> {
   bool _alertsEnabled = true;
 
+  LiveTicket? _ticket;
+  LiveBoardEntry? _liveBoardEntry;
+  bool _navigatedToCalled = false;
+
+  StreamSubscription<LiveTicket?>? _ticketSub;
+  StreamSubscription<LiveBoardEntry?>? _boardSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final ref = widget.liveTicket;
+    if (ref == null) return;
+    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate);
+    _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen((entry) {
+      if (mounted) setState(() => _liveBoardEntry = entry);
+    });
+  }
+
+  void _onTicketUpdate(LiveTicket? ticket) {
+    if (!mounted) return;
+    setState(() => _ticket = ticket);
+    if (ticket?.status == TicketStatus.serving && !_navigatedToCalled) {
+      _navigatedToCalled = true;
+      _goToCalled(ticket!);
+    }
+  }
+
+  Future<void> _goToCalled(LiveTicket ticket) async {
+    final counterLabel = ticket.counterId == null
+        ? null
+        : await ticket_service.getCounterLabel(widget.liveTicket!.institutionId, widget.liveTicket!.branchId, ticket.counterId!);
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CalledScreen(
+          location: widget.location,
+          service: widget.service,
+          liveTicket: widget.liveTicket,
+          ticketCode: ticket.code,
+          counterLabel: counterLabel,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticketSub?.cancel();
+    _boardSub?.cancel();
+    super.dispose();
+  }
+
   Future<void> _leaveQueue() async {
+    final displayCode = _ticket?.code ?? MockData.currentTicket;
     final confirmed = await confirmAction(
       context,
       title: 'Sair da fila?',
-      message: 'Perde a sua posição atual (senha ${MockData.currentTicket}). Vai ter de entrar novamente na fila.',
+      message: 'Perde a sua posição atual (senha $displayCode). Vai ter de entrar novamente na fila.',
       confirmLabel: 'Sair da fila',
       danger: true,
     );
-    if (confirmed && mounted) goToRootTab(context, 0);
+    if (!confirmed) return;
+    final ref = widget.liveTicket;
+    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (mounted) goToRootTab(context, 0);
   }
 
   Future<void> _openWhatsapp() async {
+    final displayCode = _ticket?.code ?? MockData.currentTicket;
     final ok = await launchUrl(
-      Uri.parse('https://wa.me/${MockData.supportWhatsapp}?text=${Uri.encodeComponent("Olá, estou na fila ${MockData.currentTicket} em ${widget.location.name}.")}'),
+      Uri.parse('https://wa.me/${MockData.supportWhatsapp}?text=${Uri.encodeComponent("Olá, estou na fila $displayCode em ${widget.location.name}.")}'),
       mode: LaunchMode.externalApplication,
     );
     if (!ok && mounted) {
@@ -49,6 +111,9 @@ class _AlmostScreenState extends State<AlmostScreen> {
   }
 
   void _showQueueDetails() {
+    final wired = widget.liveTicket != null;
+    final displayCode = wired ? (_ticket?.code ?? '…') : MockData.currentTicket;
+    final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -73,24 +138,25 @@ class _AlmostScreenState extends State<AlmostScreen> {
                 const SizedBox(height: 4),
                 Text(widget.service.name, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
                 const SizedBox(height: 20),
-                const Row(
+                Row(
                   children: [
-                    _DetailStat(label: 'A sua senha', value: MockData.currentTicket),
-                    _DetailStat(label: 'À sua frente', value: '2'),
-                    _DetailStat(label: 'Balcão', value: MockData.counterNumber),
+                    _DetailStat(label: 'A sua senha', value: displayCode),
+                    const _DetailStat(label: 'À sua frente', value: '2'),
+                    _DetailStat(label: 'Balcão', value: servingCounterLabel),
                   ],
                 ),
                 const SizedBox(height: 20),
-                const TicketProgressRow(
-                  tickets: MockData.ticketProgress,
-                  current: MockData.currentTicket,
-                  bubbleColor: Color(0xFFE4EAFB),
-                  bubbleTextColor: AppColors.primaryDark,
-                  activeColor: AppColors.primary,
-                  activeTextColor: Colors.white,
-                  lineColor: Color(0xFFDCE3F5),
-                  captionColor: AppColors.primary,
-                ),
+                if (!wired)
+                  const TicketProgressRow(
+                    tickets: MockData.ticketProgress,
+                    current: MockData.currentTicket,
+                    bubbleColor: Color(0xFFE4EAFB),
+                    bubbleTextColor: AppColors.primaryDark,
+                    activeColor: AppColors.primary,
+                    activeTextColor: Colors.white,
+                    lineColor: Color(0xFFDCE3F5),
+                    captionColor: AppColors.primary,
+                  ),
               ],
             ),
           ),
