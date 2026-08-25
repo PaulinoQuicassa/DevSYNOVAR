@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
+import '../app_stores.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
@@ -30,14 +31,14 @@ class AlmostScreen extends StatefulWidget {
 }
 
 class _AlmostScreenState extends State<AlmostScreen> {
-  bool _alertsEnabled = true;
-
   LiveTicket? _ticket;
   LiveBoardEntry? _liveBoardEntry;
+  int _peopleAhead = 0;
   bool _navigatedToCalled = false;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
   StreamSubscription<LiveBoardEntry?>? _boardSub;
+  StreamSubscription<int>? _aheadSub;
 
   @override
   void initState() {
@@ -52,7 +53,13 @@ class _AlmostScreenState extends State<AlmostScreen> {
 
   void _onTicketUpdate(LiveTicket? ticket) {
     if (!mounted) return;
+    final wasSubscribedToAhead = _ticket != null;
     setState(() => _ticket = ticket);
+    if (!wasSubscribedToAhead && ticket?.createdAt != null) {
+      _aheadSub = ticket_service.subscribeWaitingAhead(widget.liveTicket!, ticket!.createdAt!).listen((count) {
+        if (mounted) setState(() => _peopleAhead = count);
+      });
+    }
     if (ticket?.status == TicketStatus.serving && !_navigatedToCalled) {
       _navigatedToCalled = true;
       _goToCalled(ticket!);
@@ -81,6 +88,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
   void dispose() {
     _ticketSub?.cancel();
     _boardSub?.cancel();
+    _aheadSub?.cancel();
     super.dispose();
   }
 
@@ -141,7 +149,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                 Row(
                   children: [
                     _DetailStat(label: 'A sua senha', value: displayCode),
-                    const _DetailStat(label: 'À sua frente', value: '2'),
+                    _DetailStat(label: 'À sua frente', value: wired ? '$_peopleAhead' : '2'),
                     _DetailStat(label: 'Balcão', value: servingCounterLabel),
                   ],
                 ),
@@ -167,6 +175,11 @@ class _AlmostScreenState extends State<AlmostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final wired = widget.liveTicket != null;
+    final peopleAheadText = wired ? '$_peopleAhead' : '2';
+    final etaText = wired ? '${_peopleAhead * 5} min' : '5 min';
+    final lastCalledCode = wired ? (_liveBoardEntry?.code ?? '—') : MockData.lastCalledTicket;
+    final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -214,26 +227,32 @@ class _AlmostScreenState extends State<AlmostScreen> {
                   style: TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.4),
                 ),
                 const SizedBox(height: 22),
-                const Row(
+                Row(
                   children: [
-                    Expanded(child: _AlmostStat(value: '2', label: 'pessoas\nà sua frente')),
-                    Expanded(child: _AlmostStat(value: '5 min', label: 'tempo\nestimado')),
-                    Expanded(child: _AlmostStat(value: MockData.counterNumber, label: 'Balcão')),
+                    Expanded(child: _AlmostStat(value: peopleAheadText, label: 'pessoas\nà sua frente')),
+                    Expanded(child: _AlmostStat(value: etaText, label: 'tempo\nestimado')),
+                    Expanded(
+                      child: wired
+                          ? _AlmostStat(value: widget.service.name, label: 'Serviço')
+                          : const _AlmostStat(value: MockData.counterNumber, label: 'Balcão'),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Container(height: 1, color: Colors.white24),
-                const SizedBox(height: 16),
-                TicketProgressRow(
-                  tickets: MockData.ticketProgress,
-                  current: MockData.currentTicket,
-                  bubbleColor: Colors.white.withValues(alpha: 0.18),
-                  bubbleTextColor: Colors.white,
-                  activeColor: AppColors.amber,
-                  activeTextColor: Colors.white,
-                  lineColor: Colors.white24,
-                  captionColor: AppColors.amber,
-                ),
+                if (!wired) ...[
+                  const SizedBox(height: 20),
+                  Container(height: 1, color: Colors.white24),
+                  const SizedBox(height: 16),
+                  TicketProgressRow(
+                    tickets: MockData.ticketProgress,
+                    current: MockData.currentTicket,
+                    bubbleColor: Colors.white.withValues(alpha: 0.18),
+                    bubbleTextColor: Colors.white,
+                    activeColor: AppColors.amber,
+                    activeTextColor: Colors.white,
+                    lineColor: Colors.white24,
+                    captionColor: AppColors.amber,
+                  ),
+                ],
               ],
             ),
           ),
@@ -301,14 +320,14 @@ class _AlmostScreenState extends State<AlmostScreen> {
                   child: const Icon(Icons.campaign_outlined, size: 18, color: AppColors.primary),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Última senha chamada', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
-                      SizedBox(height: 2),
-                      Text('${MockData.lastCalledTicket}  ·  Balcão ${MockData.counterNumber}',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      const Text('Última senha chamada', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+                      const SizedBox(height: 2),
+                      Text('$lastCalledCode  ·  $servingCounterLabel',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -345,23 +364,26 @@ class _AlmostScreenState extends State<AlmostScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Flexible(child: Text('Alertas', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700))),
-                      Switch.adaptive(
-                        value: _alertsEnabled,
-                        onChanged: (v) => setState(() => _alertsEnabled = v),
-                        activeThumbColor: AppColors.primary,
-                      ),
-                    ],
+                child: AnimatedBuilder(
+                  animation: notificationSettings,
+                  builder: (context, _) => Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Flexible(child: Text('Alertas', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700))),
+                        Switch.adaptive(
+                          value: notificationSettings.queueAlerts,
+                          onChanged: (_) => notificationSettings.toggle('queueAlerts'),
+                          activeThumbColor: AppColors.primary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
