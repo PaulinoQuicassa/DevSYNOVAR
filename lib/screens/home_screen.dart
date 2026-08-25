@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
+import '../location_service.dart' as location_service;
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
@@ -8,8 +10,41 @@ import '../widgets/location_card.dart';
 import 'choose_location_screen.dart';
 import 'choose_service_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+/// Nome apresentável a partir do email da conta com sessão iniciada —
+/// não há campo de nome no registo (`signup_screen.dart` só pede
+/// email/palavra-passe), por isso usamos a parte antes do "@".
+String _greetingName() {
+  final email = authService.currentUser?.email;
+  if (email == null || !email.contains('@')) return '';
+  final local = email.split('@').first.replaceAll(RegExp(r'[._]'), ' ').trim();
+  if (local.isEmpty) return '';
+  return local.split(' ').map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1)).join(' ');
+}
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    location_service.currentPosition.addListener(_onPositionChanged);
+    location_service.ensureCurrentPosition();
+  }
+
+  void _onPositionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    location_service.currentPosition.removeListener(_onPositionChanged);
+    super.dispose();
+  }
 
   void _enterQueue(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
@@ -25,7 +60,13 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nearby = MockData.locations.take(2).toList();
+    final nearby = MockData.locations.toList()
+      ..sort((a, b) {
+        final da = location_service.realDistanceKm(a.latitude, a.longitude) ?? a.distanceKm;
+        final db = location_service.realDistanceKm(b.latitude, b.longitude) ?? b.distanceKm;
+        return da.compareTo(db);
+      });
+    final nearestTwo = nearby.take(2).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -35,16 +76,16 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Boa tarde,', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                    SizedBox(height: 2),
+                    const Text('Boa tarde,', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: 2),
                     Text(
-                      'Paulino Quicassa',
+                      _greetingName(),
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -132,7 +173,7 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          ...nearby.map(
+          ...nearestTwo.map(
             (loc) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: LocationCard(location: loc, onTap: () => _enterQueueAt(context, loc)),
