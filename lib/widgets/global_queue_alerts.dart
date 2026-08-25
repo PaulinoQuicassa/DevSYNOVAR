@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
+import '../app_stores.dart';
 import '../models/live_ticket.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
@@ -91,6 +92,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
   }
 
   void _showAlert(String title, String subtitle) {
+    if (!notificationSettings.queueAlerts) return;
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
     HapticFeedback.mediumImpact();
