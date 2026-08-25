@@ -49,6 +49,13 @@ class QueueLocation {
   final String? institutionId;
   final String? branchId;
 
+  /// Coordenadas reais da agência — usadas por `location_service.dart`
+  /// para calcular a distância real ao dispositivo (GPS) quando
+  /// disponível; `distance`/`distanceKm` continuam a servir de recurso
+  /// quando a localização do dispositivo não está disponível/autorizada.
+  final double? latitude;
+  final double? longitude;
+
   const QueueLocation({
     required this.name,
     required this.subtitle,
@@ -64,5 +71,7 @@ class QueueLocation {
     required this.services,
     this.institutionId,
     this.branchId,
+    this.latitude,
+    this.longitude,
   });
 }

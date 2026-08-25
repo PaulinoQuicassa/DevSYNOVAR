@@ -225,6 +225,8 @@ class MockData {
       services: pilotServices,
       institutionId: 'banco-exemplo',
       branchId: 'agencia-maianga',
+      latitude: -8.8115,
+      longitude: 13.2302,
     ),
     QueueLocation(
       name: 'Banco de Poupança e Crédito (BPC)',
@@ -239,6 +241,8 @@ class MockData {
       brandColor: Color(0xFF1D3F91),
       phone: '+244923000101',
       services: bankServices,
+      latitude: -8.9167,
+      longitude: 13.1833,
     ),
     QueueLocation(
       name: 'Banco BFA',
@@ -253,6 +257,8 @@ class MockData {
       brandColor: Color(0xFFE8622C),
       phone: '+244923000102',
       services: bankServices,
+      latitude: -8.9833,
+      longitude: 13.1500,
     ),
     QueueLocation(
       name: 'Banco BAI',
@@ -267,6 +273,8 @@ class MockData {
       brandColor: Color(0xFF1E7A4C),
       phone: '+244923000103',
       services: bankServices,
+      latitude: -8.9036,
+      longitude: 13.3708,
     ),
     QueueLocation(
       name: 'Banco BCI',
@@ -281,6 +289,8 @@ class MockData {
       brandColor: Color(0xFF15171C),
       phone: '+244923000104',
       services: bankServices,
+      latitude: -8.9978,
+      longitude: 13.2564,
     ),
     QueueLocation(
       name: 'SIAC — Serviço Integrado de Atendimento ao Cidadão',
@@ -295,6 +305,8 @@ class MockData {
       brandColor: Color(0xFF2E7CB8),
       phone: '+244923000105',
       services: siacServices,
+      latitude: -8.9180,
+      longitude: 13.1810,
     ),
   ];
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
+import '../location_service.dart' as location_service;
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../widgets/flow_scaffold.dart';
@@ -8,6 +9,12 @@ import '../widgets/screen_header.dart';
 import 'choose_service_screen.dart';
 
 const _nearbyThresholdKm = 5.0;
+
+/// Distância real (GPS) quando o dispositivo já a autorizou/forneceu;
+/// senão a distância fixa de sempre — mesmo critério usado em toda esta
+/// funcionalidade (nunca bloqueia nem falha por falta de GPS).
+double _effectiveDistanceKm(QueueLocation location) =>
+    location_service.realDistanceKm(location.latitude, location.longitude) ?? location.distanceKm;
 
 class ChooseLocationScreen extends StatefulWidget {
   final bool isScheduling;
@@ -24,15 +31,27 @@ class _ChooseLocationScreenState extends State<ChooseLocationScreen> {
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    location_service.currentPosition.addListener(_onPositionChanged);
+    location_service.ensureCurrentPosition();
+  }
+
+  void _onPositionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    location_service.currentPosition.removeListener(_onPositionChanged);
     _searchController.dispose();
     super.dispose();
   }
 
   List<QueueLocation> get _filtered {
-    var list = MockData.locations.toList()..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    var list = MockData.locations.toList()..sort((a, b) => _effectiveDistanceKm(a).compareTo(_effectiveDistanceKm(b)));
     if (_nearbyOnly) {
-      list = list.where((loc) => loc.distanceKm <= _nearbyThresholdKm).toList();
+      list = list.where((loc) => _effectiveDistanceKm(loc) <= _nearbyThresholdKm).toList();
     }
     if (_query.trim().isNotEmpty) {
       final q = _query.trim().toLowerCase();
