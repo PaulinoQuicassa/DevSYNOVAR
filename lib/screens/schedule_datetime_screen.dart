@@ -5,6 +5,7 @@ import '../models/appointment.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_summary_card.dart';
@@ -32,10 +33,23 @@ class _ScheduleDateTimeScreenState extends State<ScheduleDateTimeScreen> {
   late final List<DateTime> _days = List.generate(14, (i) => DateTime.now().add(Duration(days: i + 1)));
   DateTime? _selectedDay;
   String? _selectedTime;
+  bool _confirming = false;
 
-  void _confirm() {
+  Future<void> _confirm() async {
     final day = _selectedDay!;
-    final code = 'AG-${1000 + appointmentsStore.value.length + DateTime.now().second}';
+    final institutionId = widget.location.institutionId;
+    final branchId = widget.location.branchId;
+
+    setState(() => _confirming = true);
+    // Localização piloto: código reservado atomicamente (mesma sequência
+    // das senhas), para nunca colidir entre clientes diferentes no
+    // espelho institucional partilhado. Localizações mock: código local,
+    // sem risco, porque nunca sai da coleção privada do próprio cliente.
+    final code = institutionId != null && branchId != null
+        ? await ticket_service.nextAppointmentCode(institutionId, branchId)
+        : 'AG-${1000 + appointmentsStore.value.length + DateTime.now().second}';
+    if (!mounted) return;
+
     final appointment = Appointment(
       code: code,
       location: widget.location,
@@ -44,6 +58,7 @@ class _ScheduleDateTimeScreenState extends State<ScheduleDateTimeScreen> {
       time: _selectedTime!,
     );
     appointmentsStore.add(appointment);
+    setState(() => _confirming = false);
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => AppointmentConfirmedScreen(appointment: appointment)),
     );
@@ -167,9 +182,9 @@ class _ScheduleDateTimeScreenState extends State<ScheduleDateTimeScreen> {
           Opacity(
             opacity: canConfirm ? 1 : 0.45,
             child: GradientButton(
-              label: canConfirm ? 'Confirmar agendamento' : 'Escolha data e hora',
+              label: _confirming ? 'A confirmar…' : (canConfirm ? 'Confirmar agendamento' : 'Escolha data e hora'),
               icon: Icons.event_available_outlined,
-              onTap: canConfirm ? _confirm : null,
+              onTap: canConfirm && !_confirming ? _confirm : null,
             ),
           ),
         ],
