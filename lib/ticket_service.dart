@@ -26,9 +26,19 @@ LiveTicket? _ticketFromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
   );
 }
 
-/// Gera um código sem colisão (transacção sobre um contador dedicado — NÃO
-/// a coleção `counters`, essa é só para os balcões físicos e é enumerada
-/// inteira pelo ecrã de agente) e cria a senha já na forma que a app da
+/// Avança o contador partilhado `meta/ticketSeq` dentro de uma transação
+/// já em curso e devolve o próximo número — usado por `pullTicket` (senha
+/// e incremento atómicos na mesma transação) e por `nextAppointmentCode`
+/// (só reserva um número, ver abaixo porquê não pode ser tão atómico).
+Future<int> _incrementSequence(Transaction transaction, String institutionId, String branchId) async {
+  final seqRef = firestoreInstance.doc('${_branchPath(institutionId, branchId)}/meta/ticketSeq');
+  final seqSnap = await transaction.get(seqRef);
+  final nextSeq = (seqSnap.data()?['seq'] as int? ?? 0) + 1;
+  transaction.set(seqRef, {'seq': nextSeq});
+  return nextSeq;
+}
+
+/// Gera um código sem colisão e cria a senha já na forma que a app da
 /// equipa espera. Prefixo `B` deliberado, só para se distinguir a olho das
 /// senhas semeadas manualmente (`A05x`) durante um teste ao vivo.
 Future<LiveTicketRef> pullTicket({
@@ -38,13 +48,10 @@ Future<LiveTicketRef> pullTicket({
   required String customerUid,
 }) async {
   final branchPath = _branchPath(institutionId, branchId);
-  final seqRef = firestoreInstance.doc('$branchPath/meta/ticketSeq');
   final ticketRef = firestoreInstance.collection('$branchPath/tickets').doc();
 
   await firestoreInstance.runTransaction((transaction) async {
-    final seqSnap = await transaction.get(seqRef);
-    final nextSeq = (seqSnap.data()?['seq'] as int? ?? 0) + 1;
-    transaction.set(seqRef, {'seq': nextSeq});
+    final nextSeq = await _incrementSequence(transaction, institutionId, branchId);
     transaction.set(ticketRef, {
       'code': 'B${nextSeq.toString().padLeft(3, '0')}',
       'service': serviceName,
@@ -126,6 +133,29 @@ Stream<int> subscribeWaitingAhead(LiveTicketRef ref, DateTime myCreatedAt) {
   });
 }
 
+/// Quantas senhas estão em espera agora nesta agência — usado antes de
+/// entrar na fila (ex.: `LocationCard`), para substituir o número fixo
+/// de `QueueLocation.peopleInQueue` por um valor real.
+Stream<int> subscribeQueueSize(String institutionId, String branchId) {
+  return firestoreInstance
+      .collection('${_branchPath(institutionId, branchId)}/tickets')
+      .where('status', isEqualTo: 'waiting')
+      .snapshots()
+      .map((snap) => snap.docs.length);
+}
+
+/// Nomes de serviço de todas as senhas em espera agora — usado para
+/// contar, por serviço, quantas pessoas estão à espera (substitui o
+/// número fixo de `ServiceItem.peopleInQueue`). Uma só subscrição
+/// partilhada por `ChooseServiceScreen`, em vez de uma por cartão.
+Stream<List<String>> subscribeWaitingServiceNames(String institutionId, String branchId) {
+  return firestoreInstance
+      .collection('${_branchPath(institutionId, branchId)}/tickets')
+      .where('status', isEqualTo: 'waiting')
+      .snapshots()
+      .map((snap) => snap.docs.map((d) => d.data()['service'] as String? ?? '').toList());
+}
+
 /// O próprio cliente desiste da senha (sair da fila, ou avisar que não
 /// pode comparecer já depois de chamado) — muda `status` e regista a
 /// origem (`noShowReason`) para os KPIs do dashboard distinguirem de uma
@@ -144,6 +174,21 @@ Future<void> setOnTheWay(LiveTicketRef ref) {
   return firestoreInstance
       .doc('${_branchPath(ref.institutionId, ref.branchId)}/tickets/${ref.ticketId}')
       .update({'customerOnTheWay': true});
+}
+
+/// Reserva o próximo código de agendamento sem colisão (`AG001`,
+/// `AG002`, ...), na mesma sequência partilhada `meta/ticketSeq` das
+/// senhas — só reserva o número (não cria nenhum documento) porque o
+/// código gerado aqui é escrito por `AppointmentsStore.add` em DOIS
+/// sítios (o agendamento privado e este espelho), não é possível fazer
+/// tudo numa única transação. Só chamado para a localização piloto; as
+/// restantes continuam com o código local antigo (sem risco de colisão
+/// partilhada, porque nunca saem da coleção privada do próprio cliente).
+Future<String> nextAppointmentCode(String institutionId, String branchId) async {
+  final seq = await firestoreInstance.runTransaction(
+    (transaction) => _incrementSequence(transaction, institutionId, branchId),
+  );
+  return 'AG${seq.toString().padLeft(3, '0')}';
 }
 
 /// Espelho, visível à equipa, de um agendamento que o cliente marca em

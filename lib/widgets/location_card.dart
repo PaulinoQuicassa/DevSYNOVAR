@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../location_service.dart' as location_service;
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import 'bank_logo.dart';
 import 'status_pill.dart';
 
@@ -52,9 +54,18 @@ class LocationCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          location.distance,
-                          style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700),
+                        ValueListenableBuilder(
+                          valueListenable: location_service.currentPosition,
+                          builder: (context, _, __) {
+                            final realKm = location_service.realDistanceKm(location.latitude, location.longitude);
+                            final label = realKm != null
+                                ? (realKm < 1 ? '${(realKm * 1000).round()} m' : '${realKm.toStringAsFixed(1)} km')
+                                : location.distance;
+                            return Text(
+                              label,
+                              style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -70,11 +81,21 @@ class LocationCard extends StatelessWidget {
                             background: Color(0xFFCCFBF1),
                             icon: Icons.podcasts,
                           ),
-                        StatusPill(
-                          label: '${location.peopleInQueue} pessoas na fila',
-                          color: location.load.color,
-                          background: location.load.bgColor,
-                        ),
+                        if (location.institutionId != null && location.branchId != null)
+                          StreamBuilder<int>(
+                            stream: ticket_service.subscribeQueueSize(location.institutionId!, location.branchId!),
+                            builder: (context, snapshot) => StatusPill(
+                              label: '${snapshot.data ?? 0} pessoas na fila',
+                              color: location.load.color,
+                              background: location.load.bgColor,
+                            ),
+                          )
+                        else
+                          StatusPill(
+                            label: '${location.peopleInQueue} pessoas na fila',
+                            color: location.load.color,
+                            background: location.load.bgColor,
+                          ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

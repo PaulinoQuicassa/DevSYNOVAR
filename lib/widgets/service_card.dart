@@ -6,7 +6,13 @@ class ServiceCard extends StatelessWidget {
   final ServiceItem service;
   final VoidCallback onTap;
 
-  const ServiceCard({super.key, required this.service, required this.onTap});
+  /// Contagem real de senhas em espera para este serviço nesta agência —
+  /// quando indicada, substitui `service.peopleInQueue` (fixo). Ver
+  /// `ChooseServiceScreen`, que a calcula a partir de uma única
+  /// subscrição partilhada (`ticket_service.subscribeWaitingServiceNames`).
+  final int? liveWaitingCount;
+
+  const ServiceCard({super.key, required this.service, required this.onTap, this.liveWaitingCount});
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +68,7 @@ class ServiceCard extends StatelessWidget {
                   const SizedBox(width: 3),
                   Flexible(
                     child: Text(
-                      '${service.peopleInQueue} na fila',
+                      '${liveWaitingCount ?? service.peopleInQueue} na fila',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: service.color),
                       overflow: TextOverflow.ellipsis,
                     ),

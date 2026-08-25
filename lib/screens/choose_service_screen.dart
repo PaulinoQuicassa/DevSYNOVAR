@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../auth/auth_service.dart';
@@ -27,10 +29,25 @@ class ChooseServiceScreen extends StatefulWidget {
 class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
   final _searchController = TextEditingController();
   String _query = '';
+  StreamSubscription<List<String>>? _waitingNamesSub;
+  List<String>? _waitingServiceNames;
+
+  @override
+  void initState() {
+    super.initState();
+    final institutionId = widget.location.institutionId;
+    final branchId = widget.location.branchId;
+    if (institutionId != null && branchId != null) {
+      _waitingNamesSub = ticket_service.subscribeWaitingServiceNames(institutionId, branchId).listen((names) {
+        if (mounted) setState(() => _waitingServiceNames = names);
+      });
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _waitingNamesSub?.cancel();
     super.dispose();
   }
 
@@ -105,7 +122,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 StatusPill(
-                  label: '${widget.location.peopleInQueue} na fila geral',
+                  label: '${_waitingServiceNames?.length ?? widget.location.peopleInQueue} na fila geral',
                   color: widget.location.load.color,
                   background: widget.location.load.bgColor,
                 ),
@@ -185,7 +202,11 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
                 mainAxisExtent: 180,
               ),
               children: results
-                  .map((service) => ServiceCard(service: service, onTap: () => _selectService(context, service)))
+                  .map((service) => ServiceCard(
+                        service: service,
+                        onTap: () => _selectService(context, service),
+                        liveWaitingCount: _waitingServiceNames?.where((n) => n == service.name).length,
+                      ))
                   .toList(),
             ),
           const SizedBox(height: 16),
