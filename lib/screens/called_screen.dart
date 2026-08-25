@@ -186,8 +186,12 @@ class _CalledScreenState extends State<CalledScreen> {
     final wired = widget.liveTicket != null;
     final displayCode = wired ? (_ticket?.code ?? widget.ticketCode ?? '…') : MockData.currentTicket;
     final counterDisplay = wired ? (widget.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
-    final now = TimeOfDay.now();
-    final callTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final realWaitMinutes = (_ticket?.createdAt != null && _ticket?.calledAt != null)
+        ? _ticket!.calledAt!.difference(_ticket!.createdAt!).inMinutes
+        : null;
+    final waitLabel = realWaitMinutes != null ? '$realWaitMinutes min' : '${widget.service.etaMinutes} min';
+    final callDateTime = _ticket?.calledAt ?? DateTime.now();
+    final callTime = '${callDateTime.hour.toString().padLeft(2, '0')}:${callDateTime.minute.toString().padLeft(2, '0')}';
     final counterPaused = _counterStatus == 'paused';
 
     return FlowScaffold(
@@ -328,7 +332,7 @@ class _CalledScreenState extends State<CalledScreen> {
                 const SizedBox(height: 12),
                 _DetailRow(icon: Icons.groups_outlined, label: 'Serviço', value: widget.service.name),
                 _DetailRow(icon: Icons.place_outlined, label: 'Local', value: widget.location.subtitle),
-                _DetailRow(icon: Icons.access_time, label: 'Tempo de espera', value: '${widget.service.etaMinutes} min'),
+                _DetailRow(icon: Icons.access_time, label: 'Tempo de espera', value: waitLabel),
                 _DetailRow(icon: Icons.event_outlined, label: 'Hora da chamada', value: callTime, isLast: true),
               ],
             ),
