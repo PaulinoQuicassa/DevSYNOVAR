@@ -4,28 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
-import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
-import '../models/queue_location.dart';
-import '../models/service_item.dart';
-import '../screens/almost_screen.dart';
-import '../screens/called_screen.dart';
 import '../theme/app_theme.dart';
+import '../ticket_navigation.dart';
 import '../ticket_service.dart' as ticket_service;
 
 /// Watches every ref in [activeTicketStore] for the whole authenticated
-/// session (see `auth_gate.dart`, wraps [RootShell]) so two important
-/// moments — "serás o próximo" and "é a sua vez" — still alert the
-/// customer with sound even when they've wandered off to another
-/// bottom-nav tab, where the queue-flow screens (`QueueScreen`/
-/// `AlmostScreen`) and their own Firestore subscriptions no longer exist
-/// (`goToRootTab` pops them off the navigator entirely) — including when
-/// that happened because the customer went back to pull a *second*
-/// ticket for a different service while the first was still waiting.
+/// session (see `auth_gate.dart`, wraps [RootShell]) so every important
+/// moment no balcão — chamado, quase a ser chamado, chamado novamente,
+/// concluído, transferido, não compareceu, balcão em pausa — continua a
+/// alertar com som mesmo quando o cliente andou noutro separador, onde
+/// os ecrãs da fila (`QueueScreen`/`AlmostScreen`) e as suas subscrições
+/// já não existem (`goToRootTab` fecha-os por completo) — incluindo
+/// quando isso aconteceu porque o cliente voltou atrás para tirar uma
+/// *segunda* senha para outro serviço enquanto a primeira ainda esperava.
 ///
-/// Tracks one independent watch per ticket (keyed by `ticketId`), never
-/// just the most recent one — a customer can be waiting on more than one
-/// service at once and every one of them must keep alerting.
+/// Cada senha é seguida de forma independente (por `ticketId`) — nunca só
+/// a mais recente.
 class GlobalQueueAlerts extends StatefulWidget {
   final Widget child;
 
@@ -40,14 +35,22 @@ class _TicketWatch {
   TicketStatus? lastStatus;
   bool announcedNext = false;
   LiveTicket? lastTicket;
+  DateTime? lastBoardUpdatedAt;
+  String? lastCounterStatus;
+  String? watchedCounterId;
+
   StreamSubscription<LiveTicket?>? ticketSub;
   StreamSubscription<int>? aheadSub;
+  StreamSubscription<LiveBoardEntry?>? boardSub;
+  StreamSubscription<String?>? counterSub;
 
   _TicketWatch(this.ref);
 
   void cancel() {
     ticketSub?.cancel();
     aheadSub?.cancel();
+    boardSub?.cancel();
+    counterSub?.cancel();
   }
 }
 
@@ -92,6 +95,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
 
   void _onTicket(_TicketWatch watch, LiveTicket? ticket) {
     if (ticket == null) return;
+    final previousStatus = watch.lastStatus;
     watch.lastTicket = ticket;
 
     if (watch.aheadSub == null && ticket.createdAt != null) {
@@ -100,8 +104,21 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
       });
     }
 
-    if (ticket.status == TicketStatus.serving && watch.lastStatus != TicketStatus.serving) {
+    if (ticket.status == TicketStatus.serving) {
+      _ensureBoardSub(watch);
+      _ensureCounterSub(watch, ticket.counterId);
+    }
+
+    if (ticket.status == TicketStatus.serving && previousStatus != TicketStatus.serving) {
       _showAlert(watch, 'É a sua vez!', '${ticket.service} — dirija-se ao balcão indicado.');
+    } else if (ticket.status == TicketStatus.waiting && previousStatus == TicketStatus.serving) {
+      _showAlert(watch, 'A sua senha foi transferida', '${ticket.service} voltou à fila de espera.');
+    } else if (ticket.status == TicketStatus.done && previousStatus != TicketStatus.done) {
+      _showAlert(watch, 'Atendimento concluído', 'O seu atendimento de ${ticket.service} terminou.');
+    } else if (ticket.status == TicketStatus.noShow &&
+        ticket.noShowReason == NoShowReason.staffMarked &&
+        previousStatus != TicketStatus.noShow) {
+      _showAlert(watch, 'Marcado como ausente', 'A sua senha de ${ticket.service} foi marcada como não comparecida.');
     }
 
     if (ticket.status == TicketStatus.done || ticket.status == TicketStatus.noShow) {
@@ -119,7 +136,48 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
     }
   }
 
+  /// "Chamar Novamente" não muda nenhum campo da senha (só o painel ao
+  /// vivo) — mesmo truque já usado localmente em `CalledScreen`: comparar
+  /// o código no `liveBoard/current` com o desta senha e reparar quando
+  /// `updatedAt` muda outra vez.
+  void _ensureBoardSub(_TicketWatch watch) {
+    if (watch.boardSub != null) return;
+    watch.boardSub = ticket_service.subscribeLiveBoardCurrent(watch.ref.institutionId, watch.ref.branchId).listen((entry) {
+      if (entry == null) return;
+      final myCode = watch.lastTicket?.code;
+      final isRecall = myCode != null &&
+          entry.code == myCode &&
+          watch.lastBoardUpdatedAt != null &&
+          entry.updatedAt != null &&
+          entry.updatedAt != watch.lastBoardUpdatedAt;
+      watch.lastBoardUpdatedAt = entry.updatedAt ?? watch.lastBoardUpdatedAt;
+      if (isRecall) {
+        _showAlert(watch, 'Estão a chamar-te novamente!', '${watch.lastTicket?.service ?? ''} — dirija-se ao balcão.');
+      }
+    });
+  }
+
+  /// "Pausar Fila" não toca na senha, só no balcão que a está a atender —
+  /// segue esse balcão assim que se sabe qual é.
+  void _ensureCounterSub(_TicketWatch watch, String? counterId) {
+    if (counterId == null || watch.watchedCounterId == counterId) return;
+    watch.counterSub?.cancel();
+    watch.watchedCounterId = counterId;
+    watch.lastCounterStatus = null;
+    watch.counterSub =
+        ticket_service.subscribeCounterStatus(watch.ref.institutionId, watch.ref.branchId, counterId).listen((status) {
+      if (status == 'paused' && watch.lastCounterStatus != 'paused') {
+        _showAlert(watch, 'O balcão está em pausa', 'Aguarde, o atendimento vai continuar em breve.');
+      }
+      watch.lastCounterStatus = status;
+    });
+  }
+
   void _showAlert(_TicketWatch watch, String title, String subtitle) {
+    // O registo fica sempre gravado (alimenta o sino de notificações);
+    // só o som/banner é que depende da definição do utilizador.
+    notificationsStore.add(title: title, subtitle: subtitle);
+
     if (!notificationSettings.queueAlerts) return;
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
@@ -132,7 +190,9 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
         subtitle: subtitle,
         onTap: () {
           if (entry.mounted) entry.remove();
-          _openTicket(watch);
+          final ticket = watch.lastTicket;
+          final nav = navigatorKey.currentState;
+          if (ticket != null && nav != null) openLiveTicketScreen(nav, watch.ref, ticket);
         },
         onDismiss: () {
           if (entry.mounted) entry.remove();
@@ -143,54 +203,6 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
     Future.delayed(const Duration(seconds: 6), () {
       if (entry.mounted) entry.remove();
     });
-  }
-
-  /// Reabre o ecrã da senha a partir só do que o aviso global sabe (o
-  /// ecrã original pode já ter sido fechado, ex.: por `goToRootTab` ao
-  /// voltar ao início para tirar uma segunda senha). A localização e o
-  /// serviço são reconstruídos a partir do `institutionId`/nome do
-  /// serviço — só funciona para a localização piloto, a única que chega
-  /// aqui (é a única que gera `LiveTicketRef`).
-  Future<void> _openTicket(_TicketWatch watch) async {
-    final ticket = watch.lastTicket;
-    final nav = navigatorKey.currentState;
-    if (ticket == null || nav == null) return;
-
-    QueueLocation? location;
-    for (final loc in MockData.locations) {
-      if (loc.institutionId == watch.ref.institutionId) {
-        location = loc;
-        break;
-      }
-    }
-    if (location == null) return;
-    ServiceItem? service;
-    for (final s in location.services) {
-      if (s.name == ticket.service) {
-        service = s;
-        break;
-      }
-    }
-    service ??= location.services.first;
-
-    if (ticket.status == TicketStatus.serving) {
-      final counterLabel = ticket.counterId == null
-          ? null
-          : await ticket_service.getCounterLabel(watch.ref.institutionId, watch.ref.branchId, ticket.counterId!);
-      nav.push(MaterialPageRoute(
-        builder: (_) => CalledScreen(
-          location: location!,
-          service: service!,
-          liveTicket: watch.ref,
-          ticketCode: ticket.code,
-          counterLabel: counterLabel,
-        ),
-      ));
-    } else {
-      nav.push(MaterialPageRoute(
-        builder: (_) => AlmostScreen(location: location!, service: service!, liveTicket: watch.ref),
-      ));
-    }
   }
 
   @override
