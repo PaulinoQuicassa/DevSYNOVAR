@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'data/mock_data.dart';
+import 'models/app_notification.dart';
 import 'models/appointment.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
@@ -196,6 +197,68 @@ class HistoryStore extends ValueNotifier<List<Visit>> {
   }
 }
 
+/// Notificações recebidas pelo cliente (ex.: "É a sua vez!") — grava-se
+/// sempre que [GlobalQueueAlerts] dispara um aviso, mesmo com o som
+/// desligado nas definições (só o som/banner é que fica condicionado a
+/// essa definição, o registo em si não). Alimenta a contagem real do
+/// sino no `HomeScreen`, em vez do ponto vermelho decorativo de sempre.
+class NotificationsStore extends ValueNotifier<List<AppNotification>> {
+  NotificationsStore() : super(const []);
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  String? _uid;
+
+  CollectionReference<Map<String, dynamic>> _collection(String uid) =>
+      firestoreInstance.collection('users').doc(uid).collection('notifications');
+
+  void listenTo(String uid) {
+    _sub?.cancel();
+    _uid = uid;
+    value = const [];
+    _sub = _collection(uid).orderBy('createdAt', descending: true).snapshots().listen((snapshot) {
+      value = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return AppNotification(
+          id: doc.id,
+          title: data['title'] as String? ?? '',
+          subtitle: data['subtitle'] as String? ?? '',
+          createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+          read: data['read'] as bool? ?? false,
+        );
+      }).toList();
+    });
+  }
+
+  void stopListening() {
+    _sub?.cancel();
+    _sub = null;
+    _uid = null;
+    value = const [];
+  }
+
+  void add({required String title, required String subtitle}) {
+    final uid = _uid;
+    if (uid == null) return;
+    unawaited(_collection(uid).add({
+      'title': title,
+      'subtitle': subtitle,
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    }));
+  }
+
+  Future<void> markAllRead() async {
+    final uid = _uid;
+    final unread = value.where((n) => !n.read).toList();
+    if (uid == null || unread.isEmpty) return;
+    final batch = firestoreInstance.batch();
+    for (final n in unread) {
+      batch.update(_collection(uid).doc(n.id), {'read': true});
+    }
+    await batch.commit();
+  }
+}
+
 class NotificationSettings extends ChangeNotifier {
   bool queueAlerts = true;
   bool appointmentReminders = true;
@@ -293,6 +356,7 @@ class AppLanguageController extends ValueNotifier<String> {
 
 final appointmentsStore = AppointmentsStore();
 final historyStore = HistoryStore();
+final notificationsStore = NotificationsStore();
 final notificationSettings = NotificationSettings();
 final appLanguageController = AppLanguageController();
 
@@ -301,6 +365,7 @@ final appLanguageController = AppLanguageController();
 void startUserDataSync(String uid) {
   appointmentsStore.listenTo(uid);
   historyStore.listenTo(uid);
+  notificationsStore.listenTo(uid);
   notificationSettings.listenTo(uid);
   appLanguageController.listenTo(uid);
 }
@@ -311,6 +376,7 @@ void startUserDataSync(String uid) {
 void stopUserDataSync() {
   appointmentsStore.stopListening();
   historyStore.stopListening();
+  notificationsStore.stopListening();
   notificationSettings.stopListening();
   appLanguageController.stopListening();
 }

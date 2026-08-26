@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../app_stores.dart';
 import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
 import '../location_service.dart' as location_service;
+import '../models/app_notification.dart';
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/location_card.dart';
 import 'choose_location_screen.dart';
 import 'choose_service_screen.dart';
+import 'notifications_screen.dart';
 
 /// Saudação real conforme a hora actual do dispositivo — deixou de ser
 /// sempre "Boa tarde".
@@ -100,28 +103,47 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
-                ),
-                child: Stack(
-                  children: [
-                    const Center(child: Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary)),
-                    Positioned(
-                      right: 10,
-                      top: 10,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(color: AppColors.critical, shape: BoxShape.circle),
+              ValueListenableBuilder<List<AppNotification>>(
+                valueListenable: notificationsStore,
+                builder: (context, notifications, _) {
+                  final unread = notifications.where((n) => !n.read).length;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    ),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Center(child: Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary)),
+                          if (unread > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                decoration: BoxDecoration(color: AppColors.critical, borderRadius: BorderRadius.circular(999)),
+                                child: Text(
+                                  unread > 9 ? '9+' : '$unread',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
