@@ -178,8 +178,12 @@ class _AlmostScreenState extends State<AlmostScreen> {
     final wired = widget.liveTicket != null;
     final peopleAheadText = wired ? '$_peopleAhead' : '2';
     final etaText = wired ? '${_peopleAhead * 5} min' : '5 min';
-    final lastCalledCode = wired ? (_liveBoardEntry?.code ?? '—') : MockData.lastCalledTicket;
-    final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
+    // '—' sozinho parecia um erro/ausência de dados. Numa agência nova,
+    // sem histórico, é perfeitamente normal ainda ninguém ter sido
+    // chamado -- deixar isso claro em vez de mostrar só um traço.
+    final lastCalledLine = wired
+        ? (_liveBoardEntry == null ? 'Ainda ninguém foi chamado' : '${_liveBoardEntry!.code}  ·  ${_liveBoardEntry!.counterLabel}')
+        : '${MockData.lastCalledTicket}  ·  Balcão ${MockData.counterNumber}';
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -326,8 +330,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                     children: [
                       const Text('Última senha chamada', style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                       const SizedBox(height: 2),
-                      Text('$lastCalledCode  ·  $servingCounterLabel',
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      Text(lastCalledLine, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                     ],
                   ),
                 ),

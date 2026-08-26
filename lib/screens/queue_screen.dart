@@ -132,7 +132,10 @@ class _QueueScreenState extends State<QueueScreen> {
   Widget build(BuildContext context) {
     final wired = widget.liveTicket != null;
     final displayCode = wired ? (_ticket?.code ?? '…') : MockData.currentTicket;
-    final lastCalledCode = wired ? (_liveBoardEntry?.code ?? '—') : MockData.lastCalledTicket;
+    // '—' sozinho parecia um erro/ausência de dados. Numa agência nova,
+    // sem histórico, é perfeitamente normal ainda ninguém ter sido
+    // chamado -- deixar isso claro em vez de mostrar só um traço.
+    final lastCalledCode = wired ? (_liveBoardEntry?.code ?? 'Ainda ninguém') : MockData.lastCalledTicket;
     final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     final peopleAheadText = wired ? '$_peopleAhead' : '4';
     final etaText = wired ? '${_peopleAhead * 5} min' : '12 min';
