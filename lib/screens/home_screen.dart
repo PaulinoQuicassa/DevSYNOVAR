@@ -10,6 +10,15 @@ import '../widgets/location_card.dart';
 import 'choose_location_screen.dart';
 import 'choose_service_screen.dart';
 
+/// Saudação real conforme a hora actual do dispositivo — deixou de ser
+/// sempre "Boa tarde".
+String _greetingPhrase() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Bom dia,';
+  if (hour < 19) return 'Boa tarde,';
+  return 'Boa noite,';
+}
+
 /// Nome apresentável a partir do email da conta com sessão iniciada —
 /// não há campo de nome no registo (`signup_screen.dart` só pede
 /// email/palavra-passe), por isso usamos a parte antes do "@".
@@ -80,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Boa tarde,', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    Text(_greetingPhrase(), style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: 2),
                     Text(
                       _greetingName(),
