@@ -206,10 +206,10 @@ class MockData {
   ];
 
   static const locations = <QueueLocation>[
-    // Localização piloto — ligada a dados reais no Firestore (ver
-    // QueueLocation.institutionId/branchId). As restantes continuam
-    // puramente mock: bancos reais sem backend por trás, propositadamente,
-    // para não sugerir que têm dados ao vivo.
+    // Todas as localizações abaixo estão ligadas a dados reais no
+    // Firestore (ver QueueLocation.institutionId/branchId) — instituições
+    // activadas em produção via scripts/seed-prod-extra-institutions.mjs
+    // (fila-certa-staff), mesma estrutura que o Banco Exemplo já usava.
     QueueLocation(
       name: 'Banco Exemplo',
       subtitle: 'Agência Maianga — piloto ao vivo',
@@ -241,6 +241,8 @@ class MockData {
       brandColor: Color(0xFF1D3F91),
       phone: '+244923000101',
       services: bankServices,
+      institutionId: 'bpc',
+      branchId: 'agencia-talatona',
       latitude: -8.9167,
       longitude: 13.1833,
     ),
@@ -257,6 +259,8 @@ class MockData {
       brandColor: Color(0xFFE8622C),
       phone: '+244923000102',
       services: bankServices,
+      institutionId: 'bfa',
+      branchId: 'agencia-belas',
       latitude: -8.9833,
       longitude: 13.1500,
     ),
@@ -273,6 +277,8 @@ class MockData {
       brandColor: Color(0xFF1E7A4C),
       phone: '+244923000103',
       services: bankServices,
+      institutionId: 'bai',
+      branchId: 'agencia-viana',
       latitude: -8.9036,
       longitude: 13.3708,
     ),
@@ -289,6 +295,8 @@ class MockData {
       brandColor: Color(0xFF15171C),
       phone: '+244923000104',
       services: bankServices,
+      institutionId: 'bci',
+      branchId: 'agencia-kilamba',
       latitude: -8.9978,
       longitude: 13.2564,
     ),
@@ -305,6 +313,8 @@ class MockData {
       brandColor: Color(0xFF2E7CB8),
       phone: '+244923000105',
       services: siacServices,
+      institutionId: 'siac',
+      branchId: 'balcao-talatona',
       latitude: -8.9180,
       longitude: 13.1810,
     ),
