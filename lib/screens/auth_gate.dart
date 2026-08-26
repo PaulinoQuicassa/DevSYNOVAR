@@ -49,7 +49,7 @@ class _AuthGateState extends State<AuthGate> {
         stopUserDataSync();
         _syncedUid = null;
       }
-      activeTicketStore.value = null;
+      activeTicketStore.value = const [];
     } else if (_syncedUid != user.uid) {
       startUserDataSync(user.uid);
       _syncedUid = user.uid;

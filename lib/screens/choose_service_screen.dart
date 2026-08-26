@@ -87,7 +87,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
         serviceName: service.name,
         customerUid: authService.currentUser!.uid,
       );
-      activeTicketStore.value = ref;
+      addActiveTicket(ref);
       if (!context.mounted) return;
       Navigator.of(context).pop(); // fecha o spinner
       Navigator.of(context).push(

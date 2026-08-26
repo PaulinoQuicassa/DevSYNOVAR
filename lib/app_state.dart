@@ -22,9 +22,20 @@ void goToRootTab(BuildContext context, int index) {
 /// without depending on a screen's own [BuildContext].
 final navigatorKey = GlobalKey<NavigatorState>();
 
-/// The queue ticket the signed-in customer has "in progress" during this
-/// app session (set once `pullTicket` succeeds, cleared on a terminal
-/// status or sign-out) — read by [GlobalQueueAlerts] so important
-/// notifications ("serás o próximo", "é a sua vez") keep firing no
-/// matter which tab the customer wandered off to.
-final activeTicketStore = ValueNotifier<LiveTicketRef?>(null);
+/// Every queue ticket the signed-in customer has "in progress" during this
+/// app session (one entry added per successful `pullTicket`, removed on a
+/// terminal status or sign-out) — read by [GlobalQueueAlerts] so important
+/// notifications ("serás o próximo", "é a sua vez") keep firing no matter
+/// which tab the customer wandered off to. A **list**, not a single ref:
+/// a customer can perfectly well be waiting on more than one service at
+/// once (e.g. "Abertura de conta" and "Empréstimo" in the same branch),
+/// and each must keep being tracked independently.
+final activeTicketStore = ValueNotifier<List<LiveTicketRef>>(const []);
+
+void addActiveTicket(LiveTicketRef ref) {
+  activeTicketStore.value = [...activeTicketStore.value, ref];
+}
+
+void removeActiveTicket(String ticketId) {
+  activeTicketStore.value = activeTicketStore.value.where((r) => r.ticketId != ticketId).toList();
+}

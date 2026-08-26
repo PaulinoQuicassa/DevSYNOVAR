@@ -4,21 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
+import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
+import '../models/queue_location.dart';
+import '../models/service_item.dart';
+import '../screens/almost_screen.dart';
+import '../screens/called_screen.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 
-/// Watches [activeTicketStore] for the whole authenticated session (see
-/// `auth_gate.dart`, wraps [RootShell]) so two important moments — "serás
-/// o próximo" and "é a sua vez" — still alert the customer with sound
-/// even when they've wandered off to another bottom-nav tab, where the
-/// queue-flow screens (`QueueScreen`/`AlmostScreen`) and their own
-/// Firestore subscriptions no longer exist (`goToRootTab` pops them off
-/// the navigator entirely).
+/// Watches every ref in [activeTicketStore] for the whole authenticated
+/// session (see `auth_gate.dart`, wraps [RootShell]) so two important
+/// moments — "serás o próximo" and "é a sua vez" — still alert the
+/// customer with sound even when they've wandered off to another
+/// bottom-nav tab, where the queue-flow screens (`QueueScreen`/
+/// `AlmostScreen`) and their own Firestore subscriptions no longer exist
+/// (`goToRootTab` pops them off the navigator entirely) — including when
+/// that happened because the customer went back to pull a *second*
+/// ticket for a different service while the first was still waiting.
 ///
-/// Deliberately narrow scope: only these two alerts are global. The
-/// existing in-flow navigation to `CalledScreen` when actually called is
-/// untouched — this just adds an always-on awareness layer on top of it.
+/// Tracks one independent watch per ticket (keyed by `ticketId`), never
+/// just the most recent one — a customer can be waiting on more than one
+/// service at once and every one of them must keep alerting.
 class GlobalQueueAlerts extends StatefulWidget {
   final Widget child;
 
@@ -28,70 +35,91 @@ class GlobalQueueAlerts extends StatefulWidget {
   State<GlobalQueueAlerts> createState() => _GlobalQueueAlertsState();
 }
 
-class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
-  LiveTicketRef? _ref;
-  TicketStatus? _lastStatus;
-  bool _announcedNext = false;
+class _TicketWatch {
+  final LiveTicketRef ref;
+  TicketStatus? lastStatus;
+  bool announcedNext = false;
+  LiveTicket? lastTicket;
+  StreamSubscription<LiveTicket?>? ticketSub;
+  StreamSubscription<int>? aheadSub;
 
-  StreamSubscription<LiveTicket?>? _ticketSub;
-  StreamSubscription<int>? _aheadSub;
+  _TicketWatch(this.ref);
+
+  void cancel() {
+    ticketSub?.cancel();
+    aheadSub?.cancel();
+  }
+}
+
+class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
+  final Map<String, _TicketWatch> _watches = {};
 
   @override
   void initState() {
     super.initState();
-    activeTicketStore.addListener(_onRefChanged);
-    _onRefChanged();
+    activeTicketStore.addListener(_onRefsChanged);
+    _onRefsChanged();
   }
 
   @override
   void dispose() {
-    activeTicketStore.removeListener(_onRefChanged);
-    _ticketSub?.cancel();
-    _aheadSub?.cancel();
+    activeTicketStore.removeListener(_onRefsChanged);
+    for (final watch in _watches.values) {
+      watch.cancel();
+    }
     super.dispose();
   }
 
-  void _onRefChanged() {
-    final ref = activeTicketStore.value;
-    if (ref == _ref) return;
-    _ref = ref;
-    _ticketSub?.cancel();
-    _aheadSub?.cancel();
-    _aheadSub = null;
-    _lastStatus = null;
-    _announcedNext = false;
-    if (ref != null) {
-      _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicket);
+  void _onRefsChanged() {
+    final refs = activeTicketStore.value;
+    final currentIds = refs.map((r) => r.ticketId).toSet();
+
+    // Pára de seguir senhas que saíram da lista (concluídas/canceladas).
+    _watches.removeWhere((id, watch) {
+      if (currentIds.contains(id)) return false;
+      watch.cancel();
+      return true;
+    });
+
+    // Começa a seguir senhas novas.
+    for (final ref in refs) {
+      if (_watches.containsKey(ref.ticketId)) continue;
+      final watch = _TicketWatch(ref);
+      _watches[ref.ticketId] = watch;
+      watch.ticketSub = ticket_service.subscribeTicket(ref).listen((ticket) => _onTicket(watch, ticket));
     }
   }
 
-  void _onTicket(LiveTicket? ticket) {
-    final ref = _ref;
-    if (ticket == null || ref == null) return;
+  void _onTicket(_TicketWatch watch, LiveTicket? ticket) {
+    if (ticket == null) return;
+    watch.lastTicket = ticket;
 
-    if (_aheadSub == null && ticket.createdAt != null) {
-      _aheadSub = ticket_service.subscribeWaitingAhead(ref, ticket.createdAt!).listen(_onAhead);
+    if (watch.aheadSub == null && ticket.createdAt != null) {
+      watch.aheadSub = ticket_service.subscribeWaitingAhead(watch.ref, ticket.createdAt!).listen((count) {
+        _onAhead(watch, count);
+      });
     }
 
-    if (ticket.status == TicketStatus.serving && _lastStatus != TicketStatus.serving) {
-      _showAlert('É a sua vez!', 'Dirija-se ao balcão indicado.');
+    if (ticket.status == TicketStatus.serving && watch.lastStatus != TicketStatus.serving) {
+      _showAlert(watch, 'É a sua vez!', '${ticket.service} — dirija-se ao balcão indicado.');
     }
 
     if (ticket.status == TicketStatus.done || ticket.status == TicketStatus.noShow) {
-      activeTicketStore.value = null;
+      removeActiveTicket(watch.ref.ticketId);
     }
 
-    _lastStatus = ticket.status;
+    watch.lastStatus = ticket.status;
   }
 
-  void _onAhead(int ahead) {
-    if (ahead == 0 && !_announcedNext && _lastStatus == TicketStatus.waiting) {
-      _announcedNext = true;
-      _showAlert('Serás o próximo!', 'Prepare-se, a sua vez está a chegar.');
+  void _onAhead(_TicketWatch watch, int ahead) {
+    if (ahead == 0 && !watch.announcedNext && watch.lastStatus == TicketStatus.waiting) {
+      watch.announcedNext = true;
+      final serviceName = watch.lastTicket?.service ?? '';
+      _showAlert(watch, 'Serás o próximo!', '$serviceName — prepare-se, a sua vez está a chegar.');
     }
   }
 
-  void _showAlert(String title, String subtitle) {
+  void _showAlert(_TicketWatch watch, String title, String subtitle) {
     if (!notificationSettings.queueAlerts) return;
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
@@ -102,15 +130,67 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
       builder: (_) => _GlobalAlertBanner(
         title: title,
         subtitle: subtitle,
+        onTap: () {
+          if (entry.mounted) entry.remove();
+          _openTicket(watch);
+        },
         onDismiss: () {
           if (entry.mounted) entry.remove();
         },
       ),
     );
     overlay.insert(entry);
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 6), () {
       if (entry.mounted) entry.remove();
     });
+  }
+
+  /// Reabre o ecrã da senha a partir só do que o aviso global sabe (o
+  /// ecrã original pode já ter sido fechado, ex.: por `goToRootTab` ao
+  /// voltar ao início para tirar uma segunda senha). A localização e o
+  /// serviço são reconstruídos a partir do `institutionId`/nome do
+  /// serviço — só funciona para a localização piloto, a única que chega
+  /// aqui (é a única que gera `LiveTicketRef`).
+  Future<void> _openTicket(_TicketWatch watch) async {
+    final ticket = watch.lastTicket;
+    final nav = navigatorKey.currentState;
+    if (ticket == null || nav == null) return;
+
+    QueueLocation? location;
+    for (final loc in MockData.locations) {
+      if (loc.institutionId == watch.ref.institutionId) {
+        location = loc;
+        break;
+      }
+    }
+    if (location == null) return;
+    ServiceItem? service;
+    for (final s in location.services) {
+      if (s.name == ticket.service) {
+        service = s;
+        break;
+      }
+    }
+    service ??= location.services.first;
+
+    if (ticket.status == TicketStatus.serving) {
+      final counterLabel = ticket.counterId == null
+          ? null
+          : await ticket_service.getCounterLabel(watch.ref.institutionId, watch.ref.branchId, ticket.counterId!);
+      nav.push(MaterialPageRoute(
+        builder: (_) => CalledScreen(
+          location: location!,
+          service: service!,
+          liveTicket: watch.ref,
+          ticketCode: ticket.code,
+          counterLabel: counterLabel,
+        ),
+      ));
+    } else {
+      nav.push(MaterialPageRoute(
+        builder: (_) => AlmostScreen(location: location!, service: service!, liveTicket: watch.ref),
+      ));
+    }
   }
 
   @override
@@ -120,9 +200,10 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
 class _GlobalAlertBanner extends StatelessWidget {
   final String title;
   final String subtitle;
+  final VoidCallback onTap;
   final VoidCallback onDismiss;
 
-  const _GlobalAlertBanner({required this.title, required this.subtitle, required this.onDismiss});
+  const _GlobalAlertBanner({required this.title, required this.subtitle, required this.onTap, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +218,7 @@ class _GlobalAlertBanner extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
-              onTap: onDismiss,
+              onTap: onTap,
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -164,7 +245,12 @@ class _GlobalAlertBanner extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Icon(Icons.close, color: Colors.white70, size: 18),
+                    IconButton(
+                      onPressed: onDismiss,
+                      icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ],
                 ),
               ),
