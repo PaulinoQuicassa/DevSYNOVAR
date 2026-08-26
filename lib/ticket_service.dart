@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'app_stores.dart';
 import 'models/live_ticket.dart';
+import 'models/my_ticket.dart';
+import 'models/queue_location.dart';
+import 'models/service_item.dart';
 
 /// Camada de acesso ao ciclo de vida real de uma senha —
 /// `institutions/{institutionId}/branches/{branchId}/tickets/{ticketId}`,
@@ -154,6 +157,53 @@ Stream<List<String>> subscribeWaitingServiceNames(String institutionId, String b
       .where('status', isEqualTo: 'waiting')
       .snapshots()
       .map((snap) => snap.docs.map((d) => d.data()['service'] as String? ?? '').toList());
+}
+
+/// Todas as senhas reais do cliente numa localização (qualquer estado —
+/// em espera, em atendimento, concluída, não compareceu...) — alimenta
+/// "Os meus atendimentos" (`my_appointments_screen.dart`), que combina
+/// isto para cada localização real do `MockData` (o número é pequeno,
+/// não compensa `collectionGroup`/índice novo).
+Stream<List<MyTicket>> subscribeMyTickets(QueueLocation location, String customerUid) {
+  final institutionId = location.institutionId;
+  final branchId = location.branchId;
+  if (institutionId == null || branchId == null) return Stream.value(const []);
+  return firestoreInstance
+      .collection('${_branchPath(institutionId, branchId)}/tickets')
+      .where('customerUid', isEqualTo: customerUid)
+      .snapshots()
+      .map((snap) => snap.docs.map((d) => _myTicketFromDoc(d, location, institutionId, branchId)).toList());
+}
+
+MyTicket _myTicketFromDoc(
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  QueueLocation location,
+  String institutionId,
+  String branchId,
+) {
+  final data = doc.data();
+  final serviceName = data['service'] as String? ?? '';
+  ServiceItem? service;
+  for (final s in location.services) {
+    if (s.name == serviceName) {
+      service = s;
+      break;
+    }
+  }
+  return MyTicket(
+    id: doc.id,
+    ref: LiveTicketRef(institutionId: institutionId, branchId: branchId, ticketId: doc.id),
+    location: location,
+    service: service,
+    code: data['code'] as String? ?? '',
+    status: ticketStatusFromString(data['status'] as String? ?? ''),
+    counterId: data['counterId'] as String?,
+    noShowReason: noShowReasonFromString(data['noShowReason'] as String?),
+    wasTransferred: data['wasTransferred'] as bool? ?? false,
+    createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+    calledAt: (data['calledAt'] as Timestamp?)?.toDate(),
+    doneAt: (data['doneAt'] as Timestamp?)?.toDate(),
+  );
 }
 
 /// O próprio cliente desiste da senha (sair da fila, ou avisar que não
