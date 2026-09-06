@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
-import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
@@ -87,11 +86,9 @@ class _RatingScreenState extends State<RatingScreen> {
       ),
     );
     final ref = widget.liveTicket;
-    final customerUid = authService.currentUser?.uid;
-    if (ref != null && customerUid != null) {
+    if (ref != null) {
       unawaited(ticket_service.submitRating(
         ref: ref,
-        customerUid: customerUid,
         serviceName: widget.service.name,
         overall: _overall,
         recommend: _recommend ?? true,

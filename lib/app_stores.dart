@@ -1,35 +1,26 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/mock_data.dart';
 import 'models/app_notification.dart';
 import 'models/appointment.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
 import 'models/visit.dart';
+import 'supabase_client.dart';
 import 'ticket_service.dart' as ticket_service;
 
-/// App-wide stores. Held in memory for instant UI updates, and mirrored to
-/// Firestore under `users/{uid}/...` so agendamentos/histórico/preferências
-/// sincronizam entre dispositivos da mesma conta. Each store exposes
+/// App-wide stores. Held in memory for instant UI updates, e a maior parte
+/// espelhada no Postgres do Supabase (`appointments`, `notifications`,
+/// `user_settings`) para agendamentos/preferências sincronizarem entre
+/// dispositivos da mesma conta. Each store exposes
 /// `listenTo(uid)`/`stopListening()`, driven by [AuthGate] as the signed-in
 /// user changes — there is nothing to show until a user is signed in.
 
-/// Mutable (not `final`) so tests can point every store at a
-/// `FakeFirebaseFirestore` (`fake_cloud_firestore`) before pumping widgets.
-FirebaseFirestore firestoreInstance = FirebaseFirestore.instance;
-
-QueueLocation? _findLocation(String monogram) {
+QueueLocation? _findLocationByIds(String institutionId, String branchId) {
   for (final location in MockData.locations) {
-    if (location.monogram == monogram) return location;
-  }
-  return null;
-}
-
-ServiceItem? _findService(QueueLocation location, String name) {
-  for (final service in location.services) {
-    if (service.name == name) return service;
+    if (location.institutionId == institutionId && location.branchId == branchId) return location;
   }
   return null;
 }
@@ -37,163 +28,107 @@ ServiceItem? _findService(QueueLocation location, String name) {
 class AppointmentsStore extends ValueNotifier<List<Appointment>> {
   AppointmentsStore() : super(const []);
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  RealtimeChannel? _channel;
   String? _uid;
 
-  CollectionReference<Map<String, dynamic>> _collection(String uid) =>
-      firestoreInstance.collection('users').doc(uid).collection('appointments');
+  Future<void> _refetch() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final rows = await supabaseClient
+        .from('appointments')
+        .select('code, institution_id, branch_id, service, date, time')
+        .eq('customer_id', uid)
+        .eq('status', 'scheduled');
+    final loaded = <Appointment>[];
+    for (final row in rows as List) {
+      final institutionId = row['institution_id'] as String;
+      final branchId = row['branch_id'] as String;
+      final location = _findLocationByIds(institutionId, branchId);
+      if (location == null) continue;
+      ServiceItem? service;
+      for (final s in location.services) {
+        if (s.name == row['service']) service = s;
+      }
+      if (service == null) continue;
+      loaded.add(Appointment(
+        code: row['code'] as String,
+        location: location,
+        service: service,
+        date: DateTime.parse(row['date'] as String),
+        time: row['time'] as String,
+      ));
+    }
+    loaded.sort((a, b) => a.date.compareTo(b.date));
+    value = loaded;
+  }
 
   void listenTo(String uid) {
-    _sub?.cancel();
+    _channel?.unsubscribe();
     _uid = uid;
     value = const [];
-    _sub = _collection(uid).snapshots().listen((snapshot) {
-      final loaded = <Appointment>[];
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final location = _findLocation(data['locationMonogram'] as String? ?? '');
-        if (location == null) continue;
-        final service = _findService(location, data['serviceName'] as String? ?? '');
-        if (service == null) continue;
-        final timestamp = data['date'] as Timestamp?;
-        if (timestamp == null) continue;
-        loaded.add(Appointment(
-          code: doc.id,
-          location: location,
-          service: service,
-          date: timestamp.toDate(),
-          time: data['time'] as String? ?? '',
-        ));
-      }
-      loaded.sort((a, b) => a.date.compareTo(b.date));
-      value = loaded;
-    });
+    _refetch();
+    _channel = supabaseClient
+        .channel('appointments:$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'appointments',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'customer_id', value: uid),
+          callback: (_) => _refetch(),
+        )
+        .subscribe();
   }
 
   void stopListening() {
-    _sub?.cancel();
-    _sub = null;
+    _channel?.unsubscribe();
+    _channel = null;
     _uid = null;
     value = const [];
   }
 
   void add(Appointment appointment) {
-    final uid = _uid;
-    if (uid == null) return;
-    value = [...value, appointment]..sort((a, b) => a.date.compareTo(b.date));
-    unawaited(_collection(uid).doc(appointment.code).set({
-      'locationMonogram': appointment.location.monogram,
-      'serviceName': appointment.service.name,
-      'date': Timestamp.fromDate(appointment.date),
-      'time': appointment.time,
-    }));
     final institutionId = appointment.location.institutionId;
     final branchId = appointment.location.branchId;
-    if (institutionId != null && branchId != null) {
-      unawaited(ticket_service.scheduleAppointment(
-        institutionId: institutionId,
-        branchId: branchId,
-        code: appointment.code,
-        customerUid: uid,
-        serviceName: appointment.service.name,
-        date: appointment.date,
-        time: appointment.time,
-      ));
-    }
+    if (institutionId == null || branchId == null) return;
+    value = [...value, appointment]..sort((a, b) => a.date.compareTo(b.date));
+    unawaited(ticket_service.scheduleAppointment(
+      institutionId: institutionId,
+      branchId: branchId,
+      code: appointment.code,
+      serviceName: appointment.service.name,
+      date: appointment.date,
+      time: appointment.time,
+    ));
   }
 
   void cancel(Appointment appointment) {
-    final uid = _uid;
-    if (uid == null) return;
     value = value.where((a) => a.code != appointment.code).toList();
-    unawaited(_collection(uid).doc(appointment.code).delete());
-    final institutionId = appointment.location.institutionId;
-    final branchId = appointment.location.branchId;
-    if (institutionId != null && branchId != null) {
-      unawaited(ticket_service.cancelAppointmentMirror(
-        institutionId: institutionId,
-        branchId: branchId,
-        code: appointment.code,
-      ));
-    }
+    unawaited(ticket_service.cancelAppointmentMirror(code: appointment.code));
   }
 
   Future<void> clearAll() async {
-    final uid = _uid;
-    if (uid == null) return;
-    final snapshot = await _collection(uid).get();
-    final batch = firestoreInstance.batch();
-    for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
+    final current = value;
+    value = const [];
+    for (final appointment in current) {
+      await ticket_service.cancelAppointmentMirror(code: appointment.code);
     }
-    await batch.commit();
   }
 }
 
+/// "Os meus atendimentos" já é alimentado ao vivo por
+/// `ticket_service.subscribeMyTickets` (ver `my_appointments_screen.dart`)
+/// -- este store fica só como registo local de sessão (não sincronizado,
+/// não lido por nenhum ecrã hoje) para a chamada existente em
+/// `rating_screen.dart` continuar a funcionar sem remover essa gravação.
 class HistoryStore extends ValueNotifier<List<Visit>> {
   HistoryStore() : super(const []);
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
-  String? _uid;
-
-  CollectionReference<Map<String, dynamic>> _collection(String uid) =>
-      firestoreInstance.collection('users').doc(uid).collection('history');
-
-  void listenTo(String uid) {
-    _sub?.cancel();
-    _uid = uid;
-    value = const [];
-    _sub = _collection(uid).orderBy('createdAt', descending: true).snapshots().listen((snapshot) {
-      value = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final monogram = data['monogram'] as String? ?? '';
-        final location = _findLocation(monogram);
-        return Visit(
-          bank: data['bank'] as String? ?? '',
-          monogram: monogram,
-          color: location?.brandColor ?? const Color(0xFF64748B),
-          service: data['service'] as String? ?? '',
-          date: data['date'] as String? ?? '',
-          ticket: data['ticket'] as String? ?? '',
-          status: (data['status'] as String?) == 'missed' ? VisitStatus.missed : VisitStatus.completed,
-          rating: data['rating'] as int?,
-        );
-      }).toList();
-    });
-  }
-
-  void stopListening() {
-    _sub?.cancel();
-    _sub = null;
-    _uid = null;
-    value = const [];
-  }
-
   void addCompleted({required Visit visit}) {
-    final uid = _uid;
-    if (uid == null) return;
     value = [visit, ...value];
-    unawaited(_collection(uid).add({
-      'bank': visit.bank,
-      'monogram': visit.monogram,
-      'service': visit.service,
-      'date': visit.date,
-      'ticket': visit.ticket,
-      'status': visit.status == VisitStatus.missed ? 'missed' : 'completed',
-      'rating': visit.rating,
-      'createdAt': FieldValue.serverTimestamp(),
-    }));
   }
 
   Future<void> clearAll() async {
-    final uid = _uid;
-    if (uid == null) return;
-    final snapshot = await _collection(uid).get();
-    final batch = firestoreInstance.batch();
-    for (final doc in snapshot.docs) {
-      batch.delete(doc.reference);
-    }
-    await batch.commit();
+    value = const [];
   }
 }
 
@@ -201,37 +136,52 @@ class HistoryStore extends ValueNotifier<List<Visit>> {
 /// sempre que [GlobalQueueAlerts] dispara um aviso, mesmo com o som
 /// desligado nas definições (só o som/banner é que fica condicionado a
 /// essa definição, o registo em si não). Alimenta a contagem real do
-/// sino no `HomeScreen`, em vez do ponto vermelho decorativo de sempre.
+/// sino no `HomeScreen`.
 class NotificationsStore extends ValueNotifier<List<AppNotification>> {
   NotificationsStore() : super(const []);
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
+  RealtimeChannel? _channel;
   String? _uid;
 
-  CollectionReference<Map<String, dynamic>> _collection(String uid) =>
-      firestoreInstance.collection('users').doc(uid).collection('notifications');
+  Future<void> _refetch() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final rows = await supabaseClient
+        .from('notifications')
+        .select('id, title, subtitle, created_at, read')
+        .eq('user_id', uid)
+        .order('created_at', ascending: false);
+    value = (rows as List)
+        .map((row) => AppNotification(
+              id: row['id'] as String,
+              title: row['title'] as String? ?? '',
+              subtitle: row['subtitle'] as String? ?? '',
+              createdAt: row['created_at'] == null ? null : DateTime.parse(row['created_at'] as String).toLocal(),
+              read: row['read'] as bool? ?? false,
+            ))
+        .toList();
+  }
 
   void listenTo(String uid) {
-    _sub?.cancel();
+    _channel?.unsubscribe();
     _uid = uid;
     value = const [];
-    _sub = _collection(uid).orderBy('createdAt', descending: true).snapshots().listen((snapshot) {
-      value = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return AppNotification(
-          id: doc.id,
-          title: data['title'] as String? ?? '',
-          subtitle: data['subtitle'] as String? ?? '',
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-          read: data['read'] as bool? ?? false,
-        );
-      }).toList();
-    });
+    _refetch();
+    _channel = supabaseClient
+        .channel('notifications:$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+          callback: (_) => _refetch(),
+        )
+        .subscribe();
   }
 
   void stopListening() {
-    _sub?.cancel();
-    _sub = null;
+    _channel?.unsubscribe();
+    _channel = null;
     _uid = null;
     value = const [];
   }
@@ -239,24 +189,23 @@ class NotificationsStore extends ValueNotifier<List<AppNotification>> {
   void add({required String title, required String subtitle}) {
     final uid = _uid;
     if (uid == null) return;
-    unawaited(_collection(uid).add({
+    unawaited(supabaseClient.from('notifications').insert({
+      'user_id': uid,
       'title': title,
       'subtitle': subtitle,
       'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
     }));
   }
 
   Future<void> markAllRead() async {
     final uid = _uid;
-    final unread = value.where((n) => !n.read).toList();
-    if (uid == null || unread.isEmpty) return;
-    final batch = firestoreInstance.batch();
-    for (final n in unread) {
-      batch.update(_collection(uid).doc(n.id), {'read': true});
-    }
-    await batch.commit();
+    if (uid == null || value.every((n) => n.read)) return;
+    await supabaseClient.from('notifications').update({'read': true}).eq('user_id', uid).eq('read', false);
   }
+}
+
+Future<void> _ensureSettingsRow(String uid) {
+  return supabaseClient.from('user_settings').upsert({'user_id': uid}, onConflict: 'user_id', ignoreDuplicates: true);
 }
 
 class NotificationSettings extends ChangeNotifier {
@@ -265,29 +214,45 @@ class NotificationSettings extends ChangeNotifier {
   bool promotions = false;
   bool whatsapp = true;
 
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
+  RealtimeChannel? _channel;
   String? _uid;
 
-  DocumentReference<Map<String, dynamic>> _doc(String uid) =>
-      firestoreInstance.collection('users').doc(uid).collection('settings').doc('preferences');
+  Future<void> _refetch() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final row = await supabaseClient
+        .from('user_settings')
+        .select('queue_alerts, appointment_reminders, promotions, whatsapp')
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (row == null) return;
+    queueAlerts = row['queue_alerts'] as bool? ?? queueAlerts;
+    appointmentReminders = row['appointment_reminders'] as bool? ?? appointmentReminders;
+    promotions = row['promotions'] as bool? ?? promotions;
+    whatsapp = row['whatsapp'] as bool? ?? whatsapp;
+    notifyListeners();
+  }
 
-  void listenTo(String uid) {
-    _sub?.cancel();
+  Future<void> listenTo(String uid) async {
+    _channel?.unsubscribe();
     _uid = uid;
-    _sub = _doc(uid).snapshots().listen((snapshot) {
-      final data = snapshot.data();
-      if (data == null) return;
-      queueAlerts = data['queueAlerts'] as bool? ?? queueAlerts;
-      appointmentReminders = data['appointmentReminders'] as bool? ?? appointmentReminders;
-      promotions = data['promotions'] as bool? ?? promotions;
-      whatsapp = data['whatsapp'] as bool? ?? whatsapp;
-      notifyListeners();
-    });
+    await _ensureSettingsRow(uid);
+    await _refetch();
+    _channel = supabaseClient
+        .channel('user_settings:notif:$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'user_settings',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+          callback: (_) => _refetch(),
+        )
+        .subscribe();
   }
 
   void stopListening() {
-    _sub?.cancel();
-    _sub = null;
+    _channel?.unsubscribe();
+    _channel = null;
     _uid = null;
     queueAlerts = true;
     appointmentReminders = true;
@@ -309,39 +274,62 @@ class NotificationSettings extends ChangeNotifier {
         whatsapp = !whatsapp;
     }
     notifyListeners();
-    unawaited(_doc(uid).set({
-      'queueAlerts': queueAlerts,
-      'appointmentReminders': appointmentReminders,
-      'promotions': promotions,
-      'whatsapp': whatsapp,
-    }, SetOptions(merge: true)));
+    final column = switch (key) {
+      'queueAlerts' => 'queue_alerts',
+      'appointmentReminders' => 'appointment_reminders',
+      'promotions' => 'promotions',
+      'whatsapp' => 'whatsapp',
+      _ => key,
+    };
+    final newValue = switch (key) {
+      'queueAlerts' => queueAlerts,
+      'appointmentReminders' => appointmentReminders,
+      'promotions' => promotions,
+      'whatsapp' => whatsapp,
+      _ => true,
+    };
+    unawaited(supabaseClient.from('user_settings').update({column: newValue}).eq('user_id', uid));
   }
 }
 
 /// 'pt' é o único idioma totalmente suportado hoje; mantido como store
 /// próprio para o ecrã de Definições mostrar e mudar uma seleção real,
-/// sincronizada entre dispositivos da mesma conta.
+/// sincronizada entre dispositivos da mesma conta (mesma linha
+/// `user_settings` do [NotificationSettings], coluna `language`).
 class AppLanguageController extends ValueNotifier<String> {
   AppLanguageController() : super('pt');
 
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
+  RealtimeChannel? _channel;
   String? _uid;
 
-  DocumentReference<Map<String, dynamic>> _doc(String uid) =>
-      firestoreInstance.collection('users').doc(uid).collection('settings').doc('preferences');
+  Future<void> _refetch() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final row = await supabaseClient.from('user_settings').select('language').eq('user_id', uid).maybeSingle();
+    final lang = row?['language'] as String?;
+    if (lang != null) value = lang;
+  }
 
-  void listenTo(String uid) {
-    _sub?.cancel();
+  Future<void> listenTo(String uid) async {
+    _channel?.unsubscribe();
     _uid = uid;
-    _sub = _doc(uid).snapshots().listen((snapshot) {
-      final lang = snapshot.data()?['language'] as String?;
-      if (lang != null) value = lang;
-    });
+    await _ensureSettingsRow(uid);
+    await _refetch();
+    _channel = supabaseClient
+        .channel('user_settings:lang:$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'user_settings',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+          callback: (_) => _refetch(),
+        )
+        .subscribe();
   }
 
   void stopListening() {
-    _sub?.cancel();
-    _sub = null;
+    _channel?.unsubscribe();
+    _channel = null;
     _uid = null;
     value = 'pt';
   }
@@ -350,7 +338,7 @@ class AppLanguageController extends ValueNotifier<String> {
     final uid = _uid;
     value = lang;
     if (uid == null) return;
-    unawaited(_doc(uid).set({'language': lang}, SetOptions(merge: true)));
+    unawaited(supabaseClient.from('user_settings').update({'language': lang}).eq('user_id', uid));
   }
 }
 
@@ -361,10 +349,10 @@ final notificationSettings = NotificationSettings();
 final appLanguageController = AppLanguageController();
 
 /// Liga todos os stores aos dados da conta `uid` — chamado pelo [AuthGate]
-/// quando alguém entra. Cada store passa a espelhar Firestore em tempo real.
+/// quando alguém entra. Cada store passa a espelhar o Postgres em tempo
+/// real.
 void startUserDataSync(String uid) {
   appointmentsStore.listenTo(uid);
-  historyStore.listenTo(uid);
   notificationsStore.listenTo(uid);
   notificationSettings.listenTo(uid);
   appLanguageController.listenTo(uid);
@@ -375,7 +363,7 @@ void startUserDataSync(String uid) {
 /// próxima que entrar no mesmo aparelho.
 void stopUserDataSync() {
   appointmentsStore.stopListening();
-  historyStore.stopListening();
+  historyStore.clearAll();
   notificationsStore.stopListening();
   notificationSettings.stopListening();
   appLanguageController.stopListening();

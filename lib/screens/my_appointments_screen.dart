@@ -31,7 +31,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   @override
   void initState() {
     super.initState();
-    final uid = authService.currentUser?.uid;
+    final uid = authService.currentUser?.id;
     if (uid == null) return;
     for (final location in MockData.locations) {
       if (location.institutionId == null || location.branchId == null) continue;
