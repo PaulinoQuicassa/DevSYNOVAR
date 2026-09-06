@@ -66,7 +66,6 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
     _channel?.unsubscribe();
     _uid = uid;
     value = const [];
-    _refetch();
     _channel = supabaseClient
         .channel('appointments:$uid')
         .onPostgresChanges(
@@ -76,7 +75,12 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'customer_id', value: uid),
           callback: (_) => _refetch(),
         )
-        .subscribe();
+        // Resincroniza sempre que o canal fica `subscribed` -- primeira
+        // vez e também depois de reconectar (ver nota em
+        // ticket_service.dart:_watchTable).
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) _refetch();
+        });
   }
 
   void stopListening() {
@@ -166,7 +170,6 @@ class NotificationsStore extends ValueNotifier<List<AppNotification>> {
     _channel?.unsubscribe();
     _uid = uid;
     value = const [];
-    _refetch();
     _channel = supabaseClient
         .channel('notifications:$uid')
         .onPostgresChanges(
@@ -176,7 +179,9 @@ class NotificationsStore extends ValueNotifier<List<AppNotification>> {
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
           callback: (_) => _refetch(),
         )
-        .subscribe();
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) _refetch();
+        });
   }
 
   void stopListening() {
@@ -247,7 +252,12 @@ class NotificationSettings extends ChangeNotifier {
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
           callback: (_) => _refetch(),
         )
-        .subscribe();
+        // Resincroniza também depois de reconectar (ver nota em
+        // ticket_service.dart:_watchTable) -- a linha já existe a esta
+        // altura, não é preciso repetir `_ensureSettingsRow`.
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) _refetch();
+        });
   }
 
   void stopListening() {
@@ -324,7 +334,9 @@ class AppLanguageController extends ValueNotifier<String> {
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
           callback: (_) => _refetch(),
         )
-        .subscribe();
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) _refetch();
+        });
   }
 
   void stopListening() {

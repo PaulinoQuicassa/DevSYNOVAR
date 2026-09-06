@@ -53,7 +53,6 @@ Stream<T> _watchTable<T>({
 
   controller = StreamController<T>.broadcast(
     onListen: () {
-      emit();
       channel = supabaseClient
           .channel('$table:$filterColumn:$filterValue:${DateTime.now().microsecondsSinceEpoch}')
           .onPostgresChanges(
@@ -63,7 +62,16 @@ Stream<T> _watchTable<T>({
             filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: filterColumn, value: filterValue),
             callback: (_) => emit(),
           )
-          .subscribe();
+          // `emit()` corre sempre que o canal fica `subscribed` -- não só
+          // na primeira vez, mas também depois de uma reconexão automática
+          // (perda de rede, app em background, etc.). O Postgres Changes
+          // não reenvia eventos perdidos enquanto o socket esteve em
+          // baixo, por isso sem isto o ecrã ficaria preso no último
+          // estado visto antes de cair a ligação -- ao reconectar, o
+          // estado é sempre resincronizado a partir da base de dados.
+          .subscribe((status, error) {
+            if (status == RealtimeSubscribeStatus.subscribed) emit();
+          });
     },
     onCancel: () {
       final ch = channel;
