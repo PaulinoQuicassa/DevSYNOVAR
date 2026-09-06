@@ -81,6 +81,37 @@ Stream<T> _watchTable<T>({
   return controller.stream;
 }
 
+/// Reavalia `fetch` a um intervalo fixo, em vez de reagir a
+/// postgres_changes -- usado só para agregados calculados no servidor
+/// (`branch_queue_summary`, `waiting_ahead_count`) que dependem de linhas
+/// de `tickets` pertencentes a OUTROS clientes: depois do hardening de
+/// segurança (docs/security-rls.md), um cliente sem senha activa nessa
+/// filial já não recebe eventos de mudança dessas linhas via Realtime
+/// (a política de RLS bloqueia-os também aí), por isso não há forma de
+/// saber "quando" reler -- só reavaliar a espaços regulares.
+Stream<T> _pollValue<T>({required Duration interval, required Future<T> Function() fetch}) {
+  late final StreamController<T> controller;
+  Timer? timer;
+
+  Future<void> emit() async {
+    if (controller.isClosed) return;
+    final value = await fetch();
+    if (!controller.isClosed) controller.add(value);
+  }
+
+  controller = StreamController<T>.broadcast(
+    onListen: () {
+      emit();
+      timer = Timer.periodic(interval, (_) => emit());
+    },
+    onCancel: () {
+      timer?.cancel();
+      timer = null;
+    },
+  );
+  return controller.stream;
+}
+
 /// Gera um código sem colisão e cria a senha já na forma que a app da
 /// equipa espera -- via `pull_ticket`, que faz o incremento atómico e a
 /// escrita numa única transacção no servidor (RLS bloqueia INSERT directo
@@ -176,65 +207,57 @@ Stream<String?> subscribeCounterStatus(String institutionId, String branchId, St
   );
 }
 
-/// Quantas senhas em espera foram criadas antes da minha.
+/// Quantas senhas em espera foram criadas antes da minha -- calculado no
+/// servidor (`waiting_ahead_count`, confirma a posse da senha antes de
+/// contar), sem expor as linhas de outros clientes. Reavaliado a cada 10s
+/// (ver `_pollValue`).
 Stream<int> subscribeWaitingAhead(LiveTicketRef ref, DateTime myCreatedAt) {
-  return _watchTable<int>(
-    table: 'tickets',
-    filterColumn: 'branch_id',
-    filterValue: ref.branchId,
+  return _pollValue<int>(
+    interval: const Duration(seconds: 10),
     fetch: () async {
-      final rows = await supabaseClient
-          .from('tickets')
-          .select('id, created_at')
-          .eq('institution_id', ref.institutionId)
-          .eq('branch_id', ref.branchId)
-          .eq('status', 'waiting');
-      var count = 0;
-      for (final row in rows as List) {
-        if (row['id'] == ref.ticketId) continue;
-        final createdAt = _parseTime(row['created_at']);
-        if (createdAt != null && createdAt.isBefore(myCreatedAt)) count++;
-      }
-      return count;
+      final count = await supabaseClient.rpc('waiting_ahead_count', params: {'p_ticket_id': ref.ticketId});
+      return count as int;
     },
   );
 }
 
+Future<List<Map<String, dynamic>>> _queueSummary(String institutionId, String branchId) async {
+  final rows = await supabaseClient.rpc('branch_queue_summary', params: {
+    'p_institution_id': institutionId,
+    'p_branch_id': branchId,
+  });
+  return (rows as List).cast<Map<String, dynamic>>();
+}
+
 /// Quantas senhas estão em espera agora nesta agência -- usado antes de
 /// entrar na fila (ex.: `LocationCard`), para substituir o número fixo de
-/// `QueueLocation.peopleInQueue` por um valor real.
+/// `QueueLocation.peopleInQueue` por um valor real. Soma do agregado
+/// `branch_queue_summary` (não lê as linhas de `tickets` directamente --
+/// ver docs/security-rls.md).
 Stream<int> subscribeQueueSize(String institutionId, String branchId) {
-  return _watchTable<int>(
-    table: 'tickets',
-    filterColumn: 'branch_id',
-    filterValue: branchId,
+  return _pollValue<int>(
+    interval: const Duration(seconds: 15),
     fetch: () async {
-      final rows = await supabaseClient
-          .from('tickets')
-          .select('id')
-          .eq('institution_id', institutionId)
-          .eq('branch_id', branchId)
-          .eq('status', 'waiting');
-      return (rows as List).length;
+      final rows = await _queueSummary(institutionId, branchId);
+      return rows.fold<int>(0, (sum, r) => sum + (r['waiting_count'] as num).toInt());
     },
   );
 }
 
 /// Nomes de serviço de todas as senhas em espera agora -- usado para
-/// contar, por serviço, quantas pessoas estão à espera.
+/// contar, por serviço, quantas pessoas estão à espera. Reconstrói a
+/// mesma forma (uma entrada por senha) a partir do agregado
+/// `branch_queue_summary`, para não obrigar os ecrãs que já contam
+/// ocorrências nesta lista (`choose_service_screen.dart`) a mudar.
 Stream<List<String>> subscribeWaitingServiceNames(String institutionId, String branchId) {
-  return _watchTable<List<String>>(
-    table: 'tickets',
-    filterColumn: 'branch_id',
-    filterValue: branchId,
+  return _pollValue<List<String>>(
+    interval: const Duration(seconds: 15),
     fetch: () async {
-      final rows = await supabaseClient
-          .from('tickets')
-          .select('service')
-          .eq('institution_id', institutionId)
-          .eq('branch_id', branchId)
-          .eq('status', 'waiting');
-      return (rows as List).map((r) => r['service'] as String? ?? '').toList();
+      final rows = await _queueSummary(institutionId, branchId);
+      return [
+        for (final r in rows)
+          for (var i = 0; i < (r['waiting_count'] as num).toInt(); i++) r['service'] as String? ?? '',
+      ];
     },
   );
 }
