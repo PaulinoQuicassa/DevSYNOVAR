@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../app_state.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
@@ -91,7 +92,10 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: service, liveTicket: ref)),
       );
-    } catch (_) {
+    } catch (e, stackTrace) {
+      unawaited(Sentry.captureException(e, stackTrace: stackTrace, withScope: (scope) {
+        scope.setContexts('queue', {'institutionId': institutionId, 'branchId': branchId, 'service': service.name});
+      }));
       if (!context.mounted) return;
       Navigator.of(context).pop(); // fecha o spinner
       ScaffoldMessenger.of(context).showSnackBar(
