@@ -207,9 +207,9 @@ class MockData {
 
   static const locations = <QueueLocation>[
     // Todas as localizações abaixo estão ligadas a dados reais no
-    // Firestore (ver QueueLocation.institutionId/branchId) — instituições
-    // activadas em produção via scripts/seed-prod-extra-institutions.mjs
-    // (fila-certa-staff), mesma estrutura que o Banco Exemplo já usava.
+    // Postgres/Supabase (ver QueueLocation.institutionId/branchId) —
+    // instituições activadas em produção, mesma estrutura que o Banco
+    // Exemplo já usava.
     QueueLocation(
       name: 'Banco Exemplo',
       subtitle: 'Agência Maianga — piloto ao vivo',

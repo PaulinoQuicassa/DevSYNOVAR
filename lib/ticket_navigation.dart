@@ -12,7 +12,7 @@ import 'ticket_service.dart' as ticket_service;
 /// `GlobalQueueAlerts` (o ecrã original pode já ter sido fechado, ex.:
 /// por `goToRootTab` ao voltar ao início para tirar uma segunda senha) e
 /// por "Os meus atendimentos" (a lista nunca teve um ecrã aberto para
-/// reabrir — só sabe da senha através do Firestore).
+/// reabrir — só sabe da senha através do Postgres).
 Future<void> openLiveTicketScreen(NavigatorState nav, LiveTicketRef ref, LiveTicket ticket) async {
   QueueLocation? location;
   for (final loc in MockData.locations) {

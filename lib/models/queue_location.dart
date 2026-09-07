@@ -42,10 +42,10 @@ class QueueLocation {
   final List<ServiceItem> services;
 
   /// Quando ambos definidos, esta localização está ligada a dados reais
-  /// no Firestore (`institutions/{institutionId}/branches/{branchId}`) —
-  /// tirar uma senha aqui cria um documento real, visível na app da
-  /// equipa. `null` (o caso das restantes localizações) mantém o
-  /// comportamento mock/estático de sempre.
+  /// no Postgres (tabelas `institutions`/`branches` do Supabase) — tirar
+  /// uma senha aqui cria uma linha real, visível na app da equipa. `null`
+  /// (o caso das restantes localizações) mantém o comportamento
+  /// mock/estático de sempre.
   final String? institutionId;
   final String? branchId;
 

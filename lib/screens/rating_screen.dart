@@ -18,7 +18,7 @@ import '../widgets/star_rating.dart';
 
 // Chaves fixas partilhadas com Rating/RatingAspects em
 // fila-certa-staff/src/types.ts, para o dashboard agregar por aspeto.
-const _aspectFirestoreKeys = {
+const _aspectKeys = {
   'Atendimento do colaborador': 'atendimento',
   'Tempo de espera': 'tempoEspera',
   'Organização do serviço': 'organizacao',
