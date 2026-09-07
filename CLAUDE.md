@@ -93,6 +93,22 @@ flutter build web    # build de produção para browser
 
 O projecto chamou-se inicialmente "FilaJá"; a marca foi depois alterada para "Fila Certa" em todos os aspectos. Não deve restar nenhuma referência a "filaja"/"FilaJá" no código.
 
+## Publicar (GitHub Pages)
+
+O alojamento não é Firebase Hosting (removido em 2026-09-07) -- é
+GitHub Pages, servido a partir de uma branch órfã `gh-pages` deste
+repositório (repositório público, exigido pelo plano gratuito do
+GitHub Pages).
+
+```bash
+MSYS_NO_PATHCONV=1 flutter build web --release --base-href /DevSYNOVAR/
+cp build/web/index.html build/web/404.html   # fallback de SPA
+touch build/web/.nojekyll
+# depois: copiar build/web/ para uma worktree da branch gh-pages, commit, push -f
+```
+
+URL publicado: https://paulinoquicassa.github.io/DevSYNOVAR/
+
 ## Estado atual
 
-App funcional e interactiva, com contas de utilizador reais via Supabase Auth, sincronização entre dispositivos, e seis instituições reais em produção (fila, agendamentos, avaliações, notificações — tudo ligado a dados reais no Postgres). Lado de atendente/gestor existe num repositório irmão (`fila-certa-staff`, React), já também migrado para Supabase. Firebase foi completamente removido dos dois repositórios.
+App funcional e interactiva, com contas de utilizador reais via Supabase Auth, sincronização entre dispositivos, e seis instituições reais em produção (fila, agendamentos, avaliações, notificações — tudo ligado a dados reais no Postgres). Lado de atendente/gestor existe num repositório irmão (`fila-certa-staff`, React), já também migrado para Supabase. Firebase foi completamente removido dos dois repositórios (código e hosting) -- só falta eliminar o projecto Firebase Cloud em si, pendente de acção manual do utilizador (a credencial de serviço disponível não tem permissão de Owner).
