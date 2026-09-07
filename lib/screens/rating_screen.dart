@@ -94,7 +94,7 @@ class _RatingScreenState extends State<RatingScreen> {
         recommend: _recommend ?? true,
         comment: _commentController.text.trim(),
         aspects: {
-          for (final entry in _aspectRatings.entries) _aspectFirestoreKeys[entry.key]!: entry.value,
+          for (final entry in _aspectRatings.entries) _aspectKeys[entry.key]!: entry.value,
         },
       ));
     }
