@@ -197,7 +197,7 @@ class _QueueScreenState extends State<QueueScreen> {
                     Expanded(
                       child: wired
                           ? _HeroStat(icon: Icons.category_outlined, value: widget.service.name, label: 'Serviço')
-                          : _HeroStat(icon: Icons.inbox_outlined, value: MockData.counterNumber, label: 'Balcão'),
+                          : const _HeroStat(icon: Icons.inbox_outlined, value: MockData.counterNumber, label: 'Balcão'),
                     ),
                   ],
                 ),
