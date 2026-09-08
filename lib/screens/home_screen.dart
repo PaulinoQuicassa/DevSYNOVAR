@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('os seus favoritos', style: AppTextStyles.h3),
+                    Text('os seus favoritos', style: AppTextStyles.h3),
                     const SizedBox(height: 14),
                     ...locations.map((loc) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
           const SizedBox(height: 14),
-          const Text('filas perto de si', style: AppTextStyles.h3),
+          Text('filas perto de si', style: AppTextStyles.h3),
           const SizedBox(height: 14),
           if (nearestTwo.isEmpty)
             const Padding(

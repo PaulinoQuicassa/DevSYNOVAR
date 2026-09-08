@@ -145,7 +145,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Explorar', style: AppTextStyles.h1),
+        Text('Explorar', style: AppTextStyles.h1),
         const SizedBox(height: 4),
         const Text('O que precisa de tratar hoje?', style: AppTextStyles.bodySmall),
         const SizedBox(height: 16),
@@ -225,7 +225,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Instituições', style: AppTextStyles.h3),
+              Text('instituições', style: AppTextStyles.h3),
               _FilterChip(label: _nearbyOnly ? 'Perto de si' : 'Todas', onTap: () => setState(() => _nearbyOnly = !_nearbyOnly)),
             ],
           ),
