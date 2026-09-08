@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
 import '../models/my_ticket.dart';
@@ -25,12 +26,33 @@ class MyAppointmentsScreen extends StatefulWidget {
 class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   final Map<String, List<MyTicket>> _byInstitution = {};
   final List<StreamSubscription<List<MyTicket>>> _subs = [];
+  StreamSubscription<User?>? _authSub;
+  String? _subscribedUid;
 
   @override
   void initState() {
     super.initState();
+    // Fila Certa 2.0 (modo convidado): este ecrã pode ser construído uma
+    // única vez pelo `IndexedStack` do RootShell logo no arranque, ainda
+    // sem sessão -- sem isto, um utilizador que entrasse na conta a meio
+    // da utilização nunca veria o histórico aparecer sem reiniciar a app.
+    _resubscribeIfNeeded();
+    _authSub = authService.userChanges.listen((_) => _resubscribeIfNeeded());
+  }
+
+  void _resubscribeIfNeeded() {
     final uid = authService.currentUser?.id;
-    if (uid == null) return;
+    if (uid == _subscribedUid) return;
+    for (final sub in _subs) {
+      sub.cancel();
+    }
+    _subs.clear();
+    _byInstitution.clear();
+    _subscribedUid = uid;
+    if (uid == null) {
+      if (mounted) setState(() {});
+      return;
+    }
     for (final location in MockData.locations) {
       if (location.institutionId == null || location.branchId == null) continue;
       _subs.add(ticket_service.subscribeMyTickets(location, uid).listen((tickets) {
@@ -42,6 +64,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     for (final sub in _subs) {
       sub.cancel();
     }

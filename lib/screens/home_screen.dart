@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
 import '../auth/auth_service.dart';
@@ -49,11 +52,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  StreamSubscription<User?>? _authSub;
+
   @override
   void initState() {
     super.initState();
     location_service.currentPosition.addListener(_onPositionChanged);
     location_service.ensureCurrentPosition();
+    // O IndexedStack do RootShell constrói esta página uma única vez,
+    // muitas vezes ainda em modo convidado -- sem isto, a saudação e o
+    // sino de notificações nunca actualizariam depois de entrar na conta
+    // a meio da utilização (ex.: ao confirmar entrada numa fila).
+    _authSub = authService.userChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _onPositionChanged() {
@@ -63,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     location_service.currentPosition.removeListener(_onPositionChanged);
+    _authSub?.cancel();
     super.dispose();
   }
 

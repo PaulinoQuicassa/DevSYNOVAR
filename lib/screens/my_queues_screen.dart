@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
 import '../auth/auth_service.dart';
@@ -36,12 +37,18 @@ class MyQueuesScreen extends StatefulWidget {
 class _MyQueuesScreenState extends State<MyQueuesScreen> {
   final Map<String, List<MyTicket>> _byInstitution = {};
   final List<StreamSubscription<List<MyTicket>>> _subs = [];
+  StreamSubscription<User?>? _authSub;
   String? _subscribedUid;
 
   @override
   void initState() {
     super.initState();
     _resubscribeIfNeeded();
+    // Este ecrã pode ficar visível (dentro do IndexedStack) enquanto o
+    // utilizador completa `requireAuth` a meio de outro fluxo -- sem
+    // isto, entrar na conta não fazia esta lista aparecer sem trocar de
+    // separador e voltar.
+    _authSub = authService.userChanges.listen((_) => _resubscribeIfNeeded());
   }
 
   void _resubscribeIfNeeded() {
@@ -53,7 +60,10 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
     _subs.clear();
     _byInstitution.clear();
     _subscribedUid = uid;
-    if (uid == null) return;
+    if (uid == null) {
+      if (mounted) setState(() {});
+      return;
+    }
     for (final location in MockData.locations) {
       if (location.institutionId == null || location.branchId == null) continue;
       _subs.add(ticket_service.subscribeMyTickets(location, uid).listen((tickets) {
@@ -65,6 +75,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     for (final sub in _subs) {
       sub.cancel();
     }
