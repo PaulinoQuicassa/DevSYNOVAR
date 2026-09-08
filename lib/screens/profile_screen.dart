@@ -1,14 +1,41 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_service.dart';
+import '../auth/require_auth.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confirm_dialog.dart';
 import 'about_screen.dart';
+import 'favorites_screen.dart';
 import 'help_screen.dart';
+import 'login_screen.dart';
 import 'notification_settings_screen.dart';
 import 'settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  StreamSubscription<User?>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = authService.userChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 
   Future<void> _signOut(BuildContext context) async {
     final confirmed = await confirmAction(
@@ -25,11 +52,12 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final email = authService.currentUser?.email ?? '';
+    final user = authService.currentUser;
+    final signedIn = user != null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Perfil', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+        const Text('Perfil', style: AppTextStyles.h1),
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(18),
@@ -50,21 +78,39 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('A minha conta', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text(signedIn ? 'A minha conta' : 'Ainda não tem conta',
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     Text(
-                      email,
+                      signedIn ? (user.email ?? '') : 'Entre para guardar favoritos, histórico e notificações.',
                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              if (!signedIn)
+                TextButton(
+                  style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primary),
+                  onPressed: () => Navigator.of(context, rootNavigator: true)
+                      .push(MaterialPageRoute(builder: (_) => const LoginScreen())),
+                  child: const Text('Entrar', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
             ],
           ),
         ),
         const SizedBox(height: 24),
         const _SectionLabel('Conta'),
+        _ProfileRow(
+          icon: Icons.star_outline_rounded,
+          label: 'Favoritos',
+          onTap: () async {
+            final ok = await requireAuth(context, reason: 'Precisa de uma conta para guardar favoritos.');
+            if (ok && context.mounted) {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FavoritesScreen()));
+            }
+          },
+        ),
         _ProfileRow(
           icon: Icons.notifications_none_rounded,
           label: 'Notificações',
@@ -87,13 +133,15 @@ class ProfileScreen extends StatelessWidget {
           label: 'Sobre a Fila Certa',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
         ),
-        const SizedBox(height: 20),
-        _ProfileRow(
-          icon: Icons.logout,
-          label: 'Terminar sessão',
-          danger: true,
-          onTap: () => _signOut(context),
-        ),
+        if (signedIn) ...[
+          const SizedBox(height: 20),
+          _ProfileRow(
+            icon: Icons.logout,
+            label: 'Terminar sessão',
+            danger: true,
+            onTap: () => _signOut(context),
+          ),
+        ],
       ],
     );
   }

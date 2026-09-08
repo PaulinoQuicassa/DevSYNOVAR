@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import '../app_stores.dart';
+import '../auth/auth_service.dart';
+import '../auth/require_auth.dart';
 import '../location_service.dart' as location_service;
+import '../models/favorite.dart';
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
@@ -10,7 +14,21 @@ class LocationCard extends StatelessWidget {
   final QueueLocation location;
   final VoidCallback onTap;
 
-  const LocationCard({super.key, required this.location, required this.onTap});
+  /// Mostra a estrela de favorito -- só faz sentido para localizações
+  /// reais (com institutionId/branchId), já que é isso que a tabela
+  /// `favorites` guarda.
+  final bool showFavorite;
+
+  const LocationCard({super.key, required this.location, required this.onTap, this.showFavorite = true});
+
+  Future<void> _toggleFavorite(BuildContext context) async {
+    final institutionId = location.institutionId;
+    final branchId = location.branchId;
+    if (institutionId == null || branchId == null) return;
+    final ok = await requireAuth(context, reason: 'Precisa de uma conta para guardar favoritos.');
+    if (!ok) return;
+    await favoritesStore.toggle(institutionId, branchId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +131,28 @@ class LocationCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: AppColors.textMuted),
+              if (showFavorite && location.institutionId != null)
+                ValueListenableBuilder<List<Favorite>>(
+                  valueListenable: favoritesStore,
+                  builder: (context, favorites, _) {
+                    final isFav = authService.currentUser != null &&
+                        favoritesStore.isFavorite(location.institutionId!, location.branchId!);
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => _toggleFavorite(context),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          isFav ? Icons.star_rounded : Icons.star_outline_rounded,
+                          color: isFav ? AppColors.amber : AppColors.textMuted,
+                          size: 22,
+                        ),
+                      ),
+                    );
+                  },
+                )
+              else
+                const Icon(Icons.chevron_right, color: AppColors.textMuted),
             ],
           ),
         ),

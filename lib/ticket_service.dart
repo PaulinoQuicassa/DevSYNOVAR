@@ -47,8 +47,17 @@ Stream<T> _watchTable<T>({
 
   Future<void> emit() async {
     if (controller.isClosed) return;
-    final value = await fetch();
-    if (!controller.isClosed) controller.add(value);
+    try {
+      final value = await fetch();
+      if (!controller.isClosed) controller.add(value);
+    } catch (e, stackTrace) {
+      // Fila Certa 2.0 (secção 34 do redesign, "offline/rede instável"):
+      // antes desta correcção, uma falha aqui (rede em baixo, timeout)
+      // ficava muda -- o ecrã continuava preso no último valor visto sem
+      // nenhum sinal de que a ligação caiu. `ConnectionBanner` escuta
+      // este erro para mostrar isso ao utilizador.
+      if (!controller.isClosed) controller.addError(e, stackTrace);
+    }
   }
 
   controller = StreamController<T>.broadcast(
@@ -95,8 +104,12 @@ Stream<T> _pollValue<T>({required Duration interval, required Future<T> Function
 
   Future<void> emit() async {
     if (controller.isClosed) return;
-    final value = await fetch();
-    if (!controller.isClosed) controller.add(value);
+    try {
+      final value = await fetch();
+      if (!controller.isClosed) controller.add(value);
+    } catch (e, stackTrace) {
+      if (!controller.isClosed) controller.addError(e, stackTrace);
+    }
   }
 
   controller = StreamController<T>.broadcast(

@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       danger: true,
     );
     if (confirmed) {
-      await Future.wait([appointmentsStore.clearAll(), historyStore.clearAll()]);
+      await appointmentsStore.clearAll();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Dados apagados.')),

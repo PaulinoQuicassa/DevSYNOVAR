@@ -37,8 +37,13 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _submitting = false);
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
     }
-    // On success, AuthGate reacts to the auth state change and swaps to RootShell.
+    // SignupScreen só é aberto a partir de LoginScreen -- fecha os dois
+    // de uma vez e devolve sucesso a quem chamou `requireAuth`.
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.maybePop(true);
   }
 
   @override

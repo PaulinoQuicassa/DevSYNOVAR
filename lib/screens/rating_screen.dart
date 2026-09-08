@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../app_state.dart';
-import '../app_stores.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
-import '../models/visit.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 import '../widgets/flow_scaffold.dart';
@@ -64,6 +63,7 @@ class _RatingScreenState extends State<RatingScreen> {
   };
 
   static const _labels = ['Muito fraco', 'Fraco', 'Razoável', 'Bom', 'Muito bom'];
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -71,37 +71,42 @@ class _RatingScreenState extends State<RatingScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    final displayCode = widget.ticketCode ?? MockData.currentTicket;
-    historyStore.addCompleted(
-      visit: Visit(
-        bank: widget.location.name,
-        monogram: widget.location.monogram,
-        color: widget.location.brandColor,
-        service: widget.service.name,
-        date: 'Hoje, agora',
-        ticket: displayCode,
-        status: VisitStatus.completed,
-        rating: _overall,
-      ),
-    );
+  // Antes desta correcção, esta chamada era fire-and-forget e o ecrã
+  // mostrava sempre "Avaliação enviada" mesmo que o insert falhasse --
+  // o utilizador nunca saberia que a sua avaliação não chegou a ficar
+  // guardada. Agora espera pelo resultado real antes de confirmar.
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
     final ref = widget.liveTicket;
-    if (ref != null) {
-      unawaited(ticket_service.submitRating(
-        ref: ref,
-        serviceName: widget.service.name,
-        overall: _overall,
-        recommend: _recommend ?? true,
-        comment: _commentController.text.trim(),
-        aspects: {
-          for (final entry in _aspectRatings.entries) _aspectKeys[entry.key]!: entry.value,
-        },
-      ));
+    try {
+      if (ref != null) {
+        await ticket_service.submitRating(
+          ref: ref,
+          serviceName: widget.service.name,
+          overall: _overall,
+          recommend: _recommend ?? true,
+          comment: _commentController.text.trim(),
+          aspects: {
+            for (final entry in _aspectRatings.entries) _aspectKeys[entry.key]!: entry.value,
+          },
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Avaliação enviada. Obrigado pelo seu feedback!')),
+      );
+      goToRootTab(context, 0);
+    } catch (e, stackTrace) {
+      unawaited(Sentry.captureException(e, stackTrace: stackTrace, withScope: (scope) {
+        scope.setContexts('rating', {'ticketId': ref?.ticketId, 'service': widget.service.name});
+      }));
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível enviar a avaliação. Tente novamente.')),
+      );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Avaliação enviada. Obrigado pelo seu feedback!')),
-    );
-    goToRootTab(context, 0);
   }
 
   @override
@@ -293,7 +298,11 @@ class _RatingScreenState extends State<RatingScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          GradientButton(label: 'Enviar avaliação', icon: Icons.send_outlined, onTap: _submit),
+          GradientButton(
+            label: _submitting ? 'A enviar…' : 'Enviar avaliação',
+            icon: Icons.send_outlined,
+            onTap: _submitting ? null : _submit,
+          ),
         ],
       ),
     );

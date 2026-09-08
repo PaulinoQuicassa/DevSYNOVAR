@@ -6,19 +6,17 @@ import '../app_state.dart';
 import '../app_stores.dart';
 import '../auth/auth_service.dart';
 import '../widgets/global_queue_alerts.dart';
-import 'login_screen.dart';
 import 'root_shell.dart';
 
-/// Decides between [LoginScreen] and [RootShell] as Supabase Auth state
-/// changes, and keeps every store's realtime listener (`app_stores.dart`)
-/// pointed at the right account — started on sign-in, stopped on sign-out,
-/// so no data from one account leaks into the next session on this device.
-///
-/// Seeds [_user] from `authService.currentUser` synchronously instead of
-/// waiting for the first `userChanges` event: a fresh subscriber to
-/// `onAuthStateChange` isn't guaranteed to replay an already-signed-in
-/// state, which would otherwise leave this widget stuck showing nothing
-/// forever.
+/// Fila Certa 2.0 (redesign UX/UI): já não decide entre [LoginScreen] e
+/// [RootShell] -- o modo convidado (secção 4 do master prompt) mostra
+/// sempre [RootShell], com ou sem sessão. [LoginScreen] só aparece
+/// empurrada contextualmente por `requireAuth` (ver `auth/require_auth.dart`)
+/// no momento em que uma acção concreta precisa de conta (entrar na fila,
+/// favoritos, histórico pessoal, notificações). Este widget continua a
+/// existir só para manter cada store (`app_stores.dart`) sincronizado com
+/// a conta certa — iniciado ao entrar, parado ao sair, para não vazar
+/// dados de uma conta para a sessão seguinte no mesmo aparelho.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -28,19 +26,13 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   late final StreamSubscription<User?> _sub;
-  late User? _user = authService.currentUser;
   String? _syncedUid;
 
   @override
   void initState() {
     super.initState();
-    _applySync(_user);
-    _sub = authService.userChanges.listen(_onUser);
-  }
-
-  void _onUser(User? user) {
-    _applySync(user);
-    setState(() => _user = user);
+    _applySync(authService.currentUser);
+    _sub = authService.userChanges.listen(_applySync);
   }
 
   void _applySync(User? user) {
@@ -64,6 +56,6 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return _user == null ? const LoginScreen() : const GlobalQueueAlerts(child: RootShell());
+    return const GlobalQueueAlerts(child: RootShell());
   }
 }
