@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_state.dart';
 import '../data/mock_data.dart';
 import '../domain/queue_insights.dart';
 import '../location_service.dart' as location_service;
@@ -39,6 +40,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String _query = '';
   bool _nearbyOnly = false;
 
@@ -47,6 +49,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.initState();
     location_service.currentPosition.addListener(_onPositionChanged);
     location_service.ensureCurrentPosition();
+    _applyPendingQuery();
+    pendingExploreQuery.addListener(_applyPendingQuery);
+  }
+
+  // A Home escreve aqui (`pendingExploreQuery`) e muda de separador --
+  // este ecrã, mantido vivo pelo IndexedStack do RootShell, aplica a
+  // pesquisa e devolve o foco ao campo para o utilizador continuar a
+  // escrever de imediato, exactamente como pedido: a pesquisa entra
+  // directamente em modo de resultados, nunca na lista de instituições
+  // (essa continua a ser só o botão "Instituições"/"Perto de mim").
+  void _applyPendingQuery() {
+    final query = pendingExploreQuery.value;
+    if (query == null) return;
+    pendingExploreQuery.value = null;
+    if (!mounted) return;
+    setState(() {
+      _query = query;
+      _searchController.text = query;
+      _searchController.selection = TextSelection.collapsed(offset: query.length);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
   }
 
   void _onPositionChanged() {
@@ -56,7 +81,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     location_service.currentPosition.removeListener(_onPositionChanged);
+    pendingExploreQuery.removeListener(_applyPendingQuery);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -136,6 +163,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  focusNode: _searchFocusNode,
                   onChanged: (v) => setState(() => _query = v),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -176,7 +204,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     SizedBox(height: 10),
                     Text('Não encontrámos este serviço perto de si.', style: AppTextStyles.bodyStrong, textAlign: TextAlign.center),
                     SizedBox(height: 4),
-                    Text('Experimente procurar outro serviço ou ver todas as instituições abaixo.',
+                    Text('Experimente procurar outro serviço, ou limpe a pesquisa para ver as instituições.',
                         style: AppTextStyles.bodySmall, textAlign: TextAlign.center),
                   ],
                 ),
@@ -189,24 +217,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 )),
           const SizedBox(height: 20),
         ],
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Instituições', style: AppTextStyles.h3),
-            _FilterChip(label: _nearbyOnly ? 'Perto de si' : 'Todas', onTap: () => setState(() => _nearbyOnly = !_nearbyOnly)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (locationResults.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('Sem instituições nesta categoria.', style: AppTextStyles.bodySmall),
-          )
-        else
-          ...locationResults.map((loc) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: LocationCard(location: loc, onTap: () => _openLocation(loc)),
-              )),
+        // A lista de instituições é o que o botão "Instituições"/"Perto
+        // de mim" mostra -- durante uma pesquisa activa fica escondida,
+        // para escrever aqui nunca "levar à lista de instituições" (só
+        // aos resultados do serviço procurado).
+        if (query.isEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Instituições', style: AppTextStyles.h3),
+              _FilterChip(label: _nearbyOnly ? 'Perto de si' : 'Todas', onTap: () => setState(() => _nearbyOnly = !_nearbyOnly)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (locationResults.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('Sem instituições nesta categoria.', style: AppTextStyles.bodySmall),
+            )
+          else
+            ...locationResults.map((loc) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: LocationCard(location: loc, onTap: () => _openLocation(loc)),
+                )),
+        ],
       ],
     );
   }

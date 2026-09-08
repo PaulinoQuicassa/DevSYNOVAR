@@ -7,7 +7,6 @@ import '../app_stores.dart';
 import '../auth/auth_service.dart';
 import '../data/mock_data.dart';
 import '../location_service.dart' as location_service;
-import '../models/app_notification.dart';
 import '../models/favorite.dart';
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
@@ -16,7 +15,6 @@ import '../widgets/location_card.dart';
 import '../auth/require_auth.dart';
 import 'choose_service_screen.dart';
 import 'favorites_screen.dart';
-import 'notifications_screen.dart';
 
 /// Saudação real conforme a hora actual do dispositivo — deixou de ser
 /// sempre "Boa tarde".
@@ -81,6 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExplore(BuildContext context) => goToRootTab(context, 1);
 
+  // A barra de pesquisa da Home escreve a consulta em `pendingExploreQuery`
+  // e muda para o separador "Explorar", que a aplica directamente aos
+  // resultados de serviço -- nunca à lista de instituições (essa
+  // continua a ser só o botão "Encontrar um serviço"/"Instituições").
+  void _submitSearch(BuildContext context, String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    pendingExploreQuery.value = trimmed;
+    goToRootTab(context, 1);
+  }
+
   Future<void> _openFavorites(BuildContext context) async {
     final ok = await requireAuth(context, reason: 'Precisa de uma conta para guardar favoritos.');
     if (!ok || !context.mounted) return;
@@ -116,67 +125,19 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // O acesso a notificações só existe a partir do Perfil (conta
+          // obrigatória) -- sem atalho aqui na Home, mesmo para quem já
+          // tem sessão iniciada.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_greetingPhrase(), style: AppTextStyles.bodySmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      signedIn ? _greetingName() : 'Bem-vindo',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
+              Text(_greetingPhrase(), style: AppTextStyles.bodySmall),
+              const SizedBox(height: 2),
+              Text(
+                signedIn ? _greetingName() : 'Bem-vindo',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(width: 12),
-              if (signedIn)
-                ValueListenableBuilder<List<AppNotification>>(
-                  valueListenable: notificationsStore,
-                  builder: (context, notifications, _) {
-                    final unread = notifications.where((n) => !n.read).length;
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                      ),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
-                        ),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Center(child: Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary)),
-                            if (unread > 0)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                                  decoration: BoxDecoration(color: AppColors.critical, borderRadius: BorderRadius.circular(999)),
-                                  child: Text(
-                                    unread > 9 ? '9+' : '$unread',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
             ],
           ),
           const SizedBox(height: 24),
@@ -201,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 13, height: 1.5),
                 ),
                 const SizedBox(height: 16),
-                _HomeSearchField(onTap: () => _openExplore(context)),
+                _HomeSearchField(onSubmitted: (query) => _submitSearch(context, query)),
               ],
             ),
           ),
@@ -265,30 +226,62 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeSearchField extends StatelessWidget {
-  final VoidCallback onTap;
+/// Campo de pesquisa real (não um botão disfarçado) -- escrever aqui e
+/// submeter (Enter/ícone) leva directamente aos resultados desse
+/// serviço em "Explorar", nunca à lista de instituições.
+class _HomeSearchField extends StatefulWidget {
+  final ValueChanged<String> onSubmitted;
 
-  const _HomeSearchField({required this.onTap});
+  const _HomeSearchField({required this.onSubmitted});
+
+  @override
+  State<_HomeSearchField> createState() => _HomeSearchFieldState();
+}
+
+class _HomeSearchFieldState extends State<_HomeSearchField> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => widget.onSubmitted(_controller.text);
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(AppRadius.sm),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        onTap: onTap,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          child: Row(
-            children: [
-              Icon(Icons.search, size: 18, color: AppColors.textMuted),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text('O que precisa de tratar?', style: TextStyle(fontSize: 13.5, color: AppColors.textMuted)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              onTap: _submit,
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.search, size: 18, color: AppColors.textMuted),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.search,
+                onSubmitted: widget.onSubmitted,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  hintText: 'O que precisa de tratar? Ex.: Renovar BI…',
+                  hintStyle: TextStyle(fontSize: 13.5, color: AppColors.textMuted),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

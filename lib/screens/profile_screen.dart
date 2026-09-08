@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../app_stores.dart';
 import '../auth/auth_service.dart';
 import '../auth/require_auth.dart';
+import '../models/app_notification.dart';
 import '../theme/app_theme.dart';
 import '../widgets/confirm_dialog.dart';
 import 'about_screen.dart';
@@ -11,6 +13,7 @@ import 'favorites_screen.dart';
 import 'help_screen.dart';
 import 'login_screen.dart';
 import 'notification_settings_screen.dart';
+import 'notifications_screen.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -111,13 +114,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
           },
         ),
-        _ProfileRow(
-          icon: Icons.notifications_none_rounded,
-          label: 'Notificações',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+        // Único ponto de acesso às notificações da app (secção 18 do
+        // redesign) -- de propósito sem atalho na Home: só chega a esta
+        // caixa de entrada quem tem conta e está no Perfil.
+        ValueListenableBuilder<List<AppNotification>>(
+          valueListenable: notificationsStore,
+          builder: (context, notifications, _) {
+            final unread = signedIn ? notifications.where((n) => !n.read).length : 0;
+            return _ProfileRow(
+              icon: Icons.notifications_none_rounded,
+              label: 'Notificações',
+              badge: unread > 0 ? unread : null,
+              onTap: () async {
+                final ok = await requireAuth(context, reason: 'Precisa de uma conta para ver as suas notificações.');
+                if (ok && context.mounted) {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+                }
+              },
+            );
+          },
         ),
         _ProfileRow(
           icon: Icons.tune,
+          label: 'Preferências de notificações',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+        ),
+        _ProfileRow(
+          icon: Icons.settings_outlined,
           label: 'Definições',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
         ),
@@ -169,8 +192,9 @@ class _ProfileRow extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool danger;
+  final int? badge;
 
-  const _ProfileRow({required this.icon, required this.label, required this.onTap, this.danger = false});
+  const _ProfileRow({required this.icon, required this.label, required this.onTap, this.danger = false, this.badge});
 
   @override
   Widget build(BuildContext context) {
@@ -194,6 +218,17 @@ class _ProfileRow extends StatelessWidget {
                   style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: danger ? AppColors.critical : AppColors.textPrimary),
                 ),
               ),
+              if (badge != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.critical, borderRadius: BorderRadius.circular(999)),
+                  child: Text(
+                    badge! > 9 ? '9+' : '$badge',
+                    style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
             ],
           ),
