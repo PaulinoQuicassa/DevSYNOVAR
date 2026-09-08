@@ -6,7 +6,7 @@ import '../location_service.dart' as location_service;
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
-import '../widgets/location_card.dart';
+import '../widgets/institution_card.dart';
 import '../widgets/queue_insight_widgets.dart';
 import 'choose_service_screen.dart';
 import 'service_confirm_screen.dart';
@@ -145,7 +145,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Explorar', style: AppTextStyles.h1),
+        Text('Explorar', style: AppTextStyles.h1),
         const SizedBox(height: 4),
         const Text('O que precisa de tratar hoje?', style: AppTextStyles.bodySmall),
         const SizedBox(height: 16),
@@ -225,7 +225,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Instituições', style: AppTextStyles.h3),
+              Text('instituições', style: AppTextStyles.h3),
               _FilterChip(label: _nearbyOnly ? 'Perto de si' : 'Todas', onTap: () => setState(() => _nearbyOnly = !_nearbyOnly)),
             ],
           ),
@@ -238,7 +238,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           else
             ...locationResults.map((loc) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LocationCard(location: loc, onTap: () => _openLocation(loc)),
+                  child: InstitutionCard(location: loc, onTap: () => _openLocation(loc)),
                 )),
         ],
       ],

@@ -98,7 +98,7 @@ class _ServiceConfirmScreenState extends State<ServiceConfirmScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(AppRadius.lg),
               boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 12))],
             ),

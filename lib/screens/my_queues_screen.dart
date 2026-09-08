@@ -126,7 +126,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Minhas filas', style: AppTextStyles.h1),
+        Text('As minhas senhas', style: AppTextStyles.h1),
         const SizedBox(height: 4),
         const Text('O que está a acontecer agora — actualizado ao vivo.', style: AppTextStyles.bodySmall),
         const SizedBox(height: 20),
@@ -134,7 +134,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(AppRadius.lg)),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -220,7 +220,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Próximos agendamentos', style: AppTextStyles.h3),
+              Text('próximos agendamentos', style: AppTextStyles.h3),
               TextButton(onPressed: () => _newAppointment(context), child: const Text('Novo')),
             ],
           ),

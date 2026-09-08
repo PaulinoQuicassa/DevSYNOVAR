@@ -30,7 +30,7 @@ class _DocumentChecklistState extends State<DocumentChecklist> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Antes de sair, confirme se tem:', style: AppTextStyles.h3),
+          Text('Antes de sair, confirme se tem:', style: AppTextStyles.h3),
           const SizedBox(height: 12),
           ...List.generate(widget.documents.length, (i) {
             final checked = _checked.contains(i);

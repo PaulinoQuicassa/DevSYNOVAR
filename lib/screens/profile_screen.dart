@@ -60,12 +60,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Perfil', style: AppTextStyles.h1),
+        Text('Perfil', style: AppTextStyles.h1),
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            gradient: AppColors.heroGradient,
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(

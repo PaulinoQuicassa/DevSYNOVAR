@@ -234,7 +234,7 @@ class _GlobalAlertBanner extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8))],
                 ),

@@ -89,7 +89,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       children: [
-        const Text('Histórico', style: AppTextStyles.h1),
+        Text('Histórico', style: AppTextStyles.h1),
         const SizedBox(height: 4),
         const Text('Os seus atendimentos anteriores.', style: AppTextStyles.bodySmall),
         const SizedBox(height: 20),

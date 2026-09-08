@@ -166,7 +166,7 @@ class _QueueScreenState extends State<QueueScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.28), blurRadius: 24, offset: const Offset(0, 14))],
             ),
