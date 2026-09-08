@@ -34,12 +34,12 @@ class FavoritesScreen extends StatelessWidget {
           builder: (context, favorites, _) {
             final locations = favorites.map(_findLocation).whereType<QueueLocation>().toList();
             if (locations.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.all(32),
+              return const Padding(
+                padding: EdgeInsets.all(32),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(Icons.star_outline_rounded, color: AppColors.textMuted, size: 40),
                       SizedBox(height: 12),
                       Text('Ainda sem favoritos', style: AppTextStyles.bodyStrong),
