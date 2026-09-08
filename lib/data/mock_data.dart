@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 
+// "O que preciso levar?" (secção 13 do redesign) -- listas curtas e
+// genéricas por serviço, dado de referência estático como o resto deste
+// ficheiro (não uma fonte contratual -- por isso `DocumentChecklist`
+// mostra sempre o aviso "confirme antes de sair").
+const _bankBasicDocuments = ['Bilhete de Identidade', 'Comprovativo de residência'];
+const _bankAccountDocuments = ['Bilhete de Identidade', 'Comprovativo de residência', 'Comprovativo de rendimento'];
+const _bankCardDocuments = ['Bilhete de Identidade', 'Cartão bancário (se for desbloqueio/substituição)'];
+const _bankCreditDocuments = ['Bilhete de Identidade', 'Comprovativo de rendimento', 'Extracto bancário recente'];
+const _bankComplaintDocuments = ['Bilhete de Identidade', 'Documento relativo à reclamação (se existir)'];
+
 class MockData {
   MockData._();
 
@@ -13,6 +23,7 @@ class MockData {
       etaMinutes: 15,
       icon: Icons.groups_outlined,
       color: Color(0xFF2F5FEA),
+      documents: _bankBasicDocuments,
     ),
     ServiceItem(
       name: 'Depósitos e Levantamentos',
@@ -21,6 +32,7 @@ class MockData {
       etaMinutes: 12,
       icon: Icons.payments_outlined,
       color: Color(0xFF16A34A),
+      documents: _bankBasicDocuments,
     ),
     ServiceItem(
       name: 'Cartões',
@@ -29,6 +41,7 @@ class MockData {
       etaMinutes: 10,
       icon: Icons.credit_card_outlined,
       color: Color(0xFF7C3AED),
+      documents: _bankCardDocuments,
     ),
     ServiceItem(
       name: 'Crédito Habitação',
@@ -37,6 +50,7 @@ class MockData {
       etaMinutes: 18,
       icon: Icons.home_outlined,
       color: Color(0xFFEA7C2F),
+      documents: _bankCreditDocuments,
     ),
     ServiceItem(
       name: 'Crédito Pessoal',
@@ -45,6 +59,7 @@ class MockData {
       etaMinutes: 20,
       icon: Icons.description_outlined,
       color: Color(0xFF0EA5A5),
+      documents: _bankCreditDocuments,
     ),
     ServiceItem(
       name: 'Reclamações',
@@ -53,6 +68,7 @@ class MockData {
       etaMinutes: 8,
       icon: Icons.support_agent_outlined,
       color: Color(0xFFDC2626),
+      documents: _bankComplaintDocuments,
     ),
   ];
 
@@ -67,6 +83,7 @@ class MockData {
       etaMinutes: 25,
       icon: Icons.badge_outlined,
       color: Color(0xFF2F5FEA),
+      documents: ['Certidão de nascimento', 'Comprovativo de residência', '2 fotografias tipo passe'],
     ),
     ServiceItem(
       name: 'Registo Civil',
@@ -75,6 +92,7 @@ class MockData {
       etaMinutes: 20,
       icon: Icons.family_restroom_outlined,
       color: Color(0xFF16A34A),
+      documents: ['Bilhete de Identidade', 'Declaração da maternidade/óbito (conforme o caso)'],
     ),
     ServiceItem(
       name: 'Trânsito e Matrículas (DTSER)',
@@ -83,6 +101,7 @@ class MockData {
       etaMinutes: 18,
       icon: Icons.directions_car_filled_outlined,
       color: Color(0xFFEA7C2F),
+      documents: ['Bilhete de Identidade', 'Factura de compra do veículo', 'Seguro automóvel'],
     ),
     ServiceItem(
       name: 'Passaporte e Residência',
@@ -91,6 +110,7 @@ class MockData {
       etaMinutes: 22,
       icon: Icons.flight_takeoff_outlined,
       color: Color(0xFF0EA5A5),
+      documents: ['Bilhete de Identidade', 'Comprovativo de residência', '2 fotografias tipo passe'],
     ),
     ServiceItem(
       name: 'Cartório Notarial',
@@ -99,6 +119,7 @@ class MockData {
       etaMinutes: 12,
       icon: Icons.approval_outlined,
       color: Color(0xFF7C3AED),
+      documents: ['Bilhete de Identidade', 'Documento original a autenticar'],
     ),
     ServiceItem(
       name: 'Registo Automóvel',
@@ -107,6 +128,7 @@ class MockData {
       etaMinutes: 15,
       icon: Icons.assignment_ind_outlined,
       color: Color(0xFF4338CA),
+      documents: ['Bilhete de Identidade', 'Título Único de Veículo (TUV)'],
     ),
     ServiceItem(
       name: 'Registo Comercial',
@@ -115,6 +137,7 @@ class MockData {
       etaMinutes: 20,
       icon: Icons.business_center_outlined,
       color: Color(0xFFDC2626),
+      documents: ['Bilhete de Identidade', 'Estatutos/contrato da empresa'],
     ),
     ServiceItem(
       name: 'Registo Predial',
@@ -123,6 +146,7 @@ class MockData {
       etaMinutes: 18,
       icon: Icons.home_work_outlined,
       color: Color(0xFF1D3F91),
+      documents: ['Bilhete de Identidade', 'Escritura ou título do imóvel'],
     ),
     ServiceItem(
       name: 'NIF — AGT',
@@ -131,6 +155,7 @@ class MockData {
       etaMinutes: 14,
       icon: Icons.receipt_long_outlined,
       color: Color(0xFFD97706),
+      documents: ['Bilhete de Identidade', 'Comprovativo de residência'],
     ),
     ServiceItem(
       name: 'INSS',
@@ -139,6 +164,7 @@ class MockData {
       etaMinutes: 16,
       icon: Icons.health_and_safety_outlined,
       color: Color(0xFF0891B2),
+      documents: ['Bilhete de Identidade', 'Cartão de contribuinte do INSS'],
     ),
     ServiceItem(
       name: 'Ficheiro Central',
@@ -147,6 +173,7 @@ class MockData {
       etaMinutes: 10,
       icon: Icons.folder_shared_outlined,
       color: Color(0xFF64748B),
+      documents: ['Bilhete de Identidade'],
     ),
     ServiceItem(
       name: 'Licenciamento Comercial (CAEC)',
@@ -155,6 +182,7 @@ class MockData {
       etaMinutes: 12,
       icon: Icons.storefront_outlined,
       color: Color(0xFFEA580C),
+      documents: ['Bilhete de Identidade', 'NIF', 'Comprovativo do local de actividade'],
     ),
     ServiceItem(
       name: 'Administração Distrital',
@@ -163,6 +191,7 @@ class MockData {
       etaMinutes: 15,
       icon: Icons.location_city_outlined,
       color: Color(0xFF9333EA),
+      documents: ['Bilhete de Identidade', 'Comprovativo de residência'],
     ),
   ];
 
@@ -178,6 +207,7 @@ class MockData {
       etaMinutes: 15,
       icon: Icons.account_balance_wallet_outlined,
       color: Color(0xFF0F766E),
+      documents: _bankAccountDocuments,
     ),
     ServiceItem(
       name: 'Cartão bancário',
@@ -186,6 +216,7 @@ class MockData {
       etaMinutes: 10,
       icon: Icons.credit_card_outlined,
       color: Color(0xFF7C3AED),
+      documents: _bankCardDocuments,
     ),
     ServiceItem(
       name: 'Empréstimo',
@@ -194,6 +225,7 @@ class MockData {
       etaMinutes: 18,
       icon: Icons.description_outlined,
       color: Color(0xFFEA7C2F),
+      documents: _bankCreditDocuments,
     ),
     ServiceItem(
       name: 'Reclamação',
@@ -202,6 +234,7 @@ class MockData {
       etaMinutes: 8,
       icon: Icons.support_agent_outlined,
       color: Color(0xFFDC2626),
+      documents: _bankComplaintDocuments,
     ),
   ];
 

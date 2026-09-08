@@ -17,6 +17,13 @@ void goToRootTab(BuildContext context, int index) {
   rootTabController.value = index;
 }
 
+/// Consulta escrita na Home e entregue ao separador "Explorar" (que o
+/// `IndexedStack` do RootShell mantém sempre vivo, por isso não pode
+/// receber isto por construtor). A Home escreve aqui e muda de
+/// separador; o `ExploreScreen` lê, aplica à sua pesquisa e limpa, para
+/// uma visita seguinte ao separador não repetir uma pesquisa antiga.
+final pendingExploreQuery = ValueNotifier<String?>(null);
+
 /// Key of the app's root [Navigator] — lets [GlobalQueueAlerts] show an
 /// overlay banner on top of whatever screen/tab is currently visible,
 /// without depending on a screen's own [BuildContext].

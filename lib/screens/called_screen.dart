@@ -10,6 +10,7 @@ import '../models/service_item.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
+import '../widgets/connection_banner.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
@@ -41,6 +42,8 @@ class _CalledScreenState extends State<CalledScreen> {
   String? _counterStatus;
   bool _onTheWaySent = false;
   bool _handledTransition = false;
+  bool _connectionLost = false;
+  bool _arrived = false;
   DateTime? _lastBoardUpdatedAt;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
@@ -52,8 +55,12 @@ class _CalledScreenState extends State<CalledScreen> {
     super.initState();
     final ref = widget.liveTicket;
     if (ref == null) return;
-    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate);
-    _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen(_onBoardUpdate);
+    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate, onError: _onStreamError);
+    _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen(_onBoardUpdate, onError: _onStreamError);
+  }
+
+  void _onStreamError(Object _) {
+    if (mounted) setState(() => _connectionLost = true);
   }
 
   @override
@@ -67,7 +74,10 @@ class _CalledScreenState extends State<CalledScreen> {
   void _onTicketUpdate(LiveTicket? ticket) {
     if (!mounted) return;
     final previousStatus = _ticket?.status;
-    setState(() => _ticket = ticket);
+    setState(() {
+      _ticket = ticket;
+      _connectionLost = false;
+    });
     if (ticket == null) return;
 
     final ref = widget.liveTicket;
@@ -166,6 +176,67 @@ class _CalledScreenState extends State<CalledScreen> {
     );
   }
 
+  // "Cheguei" (secção 20 do redesign) -- marcador só local: não há
+  // nenhum campo no servidor para "chegou ao local" (a app do balcão só
+  // trabalha com waiting/serving/done/no_show), por isso isto não avisa
+  // a equipa -- é só para o próprio utilizador confirmar visualmente que
+  // já não precisa de se preocupar em vir a caminho. Documentado como
+  // pendência no relatório final: uma integração real exigiria um campo
+  // novo, fora do âmbito desta ronda (secção 44 -- não alterar o
+  // staff/admin sem necessidade clara).
+  void _markArrived() => setState(() => _arrived = true);
+
+  // "Estou atrasado" (secção 19) -- as regras finais de tolerância a
+  // atraso são uma decisão de negócio por instituição que o backend não
+  // implementa hoje (nenhuma RPC de "estender tempo"). Em vez de fingir
+  // que a fila espera automaticamente, isto só gere expectativa com
+  // texto honesto e, se a pessoa admitir que não vai conseguir chegar,
+  // encaminha para a acção real já existente (`cancelTicket`).
+  Future<void> _runningLate(BuildContext context) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Precisa de mais alguns minutos?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              const SizedBox(height: 8),
+              const Text(
+                'A decisão final de aguardar depende da equipa no balcão — isto não estende automaticamente a sua senha.',
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.directions_walk, color: AppColors.primary),
+                title: const Text('Tenho condições para chegar'),
+                onTap: () => Navigator.of(sheetContext).pop('ok'),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.close, color: AppColors.critical),
+                title: const Text('Não vou conseguir chegar'),
+                onTap: () => Navigator.of(sheetContext).pop('cannot'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == 'cannot' && context.mounted) {
+      await _cannotAttend(context);
+    } else if (choice == 'ok' && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ok — dirija-se ao balcão assim que puder.')),
+      );
+    }
+  }
+
   Future<void> _cannotAttend(BuildContext context) async {
     final displayCode = _ticket?.code ?? widget.ticketCode ?? MockData.currentTicket;
     final confirmed = await confirmAction(
@@ -204,6 +275,7 @@ class _CalledScreenState extends State<CalledScreen> {
             trailingIcon: Icons.notifications_none_rounded,
             trailingHasDot: true,
           ),
+          ConnectionBanner(visible: _connectionLost),
           const SizedBox(height: 8),
           if (counterPaused)
             Container(
@@ -368,6 +440,12 @@ class _CalledScreenState extends State<CalledScreen> {
           ),
           const SizedBox(height: 20),
           GradientButton(
+            label: _arrived ? 'Chegou ✓ — aguarde a chamada' : 'Cheguei ao local',
+            icon: Icons.location_on_outlined,
+            onTap: _arrived ? null : _markArrived,
+          ),
+          const SizedBox(height: 10),
+          GradientButton(
             label: _onTheWaySent ? 'Aviso enviado ✓' : 'Estou a caminho',
             icon: Icons.check_circle_outline,
             gradient: const LinearGradient(colors: [AppColors.success, Color(0xFF15803D)]),
@@ -375,10 +453,25 @@ class _CalledScreenState extends State<CalledScreen> {
             onTap: _onTheWaySent ? null : _onTheWay,
           ),
           const SizedBox(height: 10),
-          OutlineButton(
-            label: 'Ver direção até ao local',
-            icon: Icons.near_me_outlined,
-            onTap: () => openMapsDirections(context, '${widget.location.name}, ${widget.location.address}'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlineButton(
+                  label: 'Estou atrasado',
+                  icon: Icons.timer_outlined,
+                  color: AppColors.warning,
+                  onTap: () => _runningLate(context),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlineButton(
+                  label: 'Direção',
+                  icon: Icons.near_me_outlined,
+                  onTap: () => openMapsDirections(context, '${widget.location.name}, ${widget.location.address}'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

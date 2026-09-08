@@ -5,7 +5,15 @@ import '../widgets/gradient_button.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// Explica, no momento certo, porque é que esta acção concreta precisa
+  /// de uma conta (Fila Certa 2.0, secção 4 do master prompt: "a
+  /// autenticação deve acontecer no momento em que existe uma razão
+  /// clara"). `null` mantém o texto genérico (ex.: alguém que entra aqui
+  /// por iniciativa própria a partir do Perfil, não por ter sido barrado
+  /// a meio de uma acção).
+  final String? reason;
+
+  const LoginScreen({super.key, this.reason});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -36,7 +44,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _submitting = false);
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
     }
+    // Empurrada contextualmente (ver `requireAuth`) -- devolve o sucesso
+    // a quem chamou. No-op se esta instância for a única rota (não há o
+    // que fechar).
+    Navigator.of(context, rootNavigator: true).maybePop(true);
   }
 
   Future<void> _forgotPassword() async {
@@ -59,7 +72,19 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                  onPressed: () => Navigator.of(context, rootNavigator: true).maybePop(false),
+                ),
+              ),
+            ),
+            Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Form(
@@ -77,9 +102,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   const Text('Fila Certa', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Entra na tua conta para veres os teus agendamentos e histórico em qualquer aparelho.',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  Text(
+                    widget.reason ??
+                        'Entra na tua conta para veres os teus agendamentos e histórico em qualquer aparelho.',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -135,6 +161,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+            ),
+          ],
         ),
       ),
     );

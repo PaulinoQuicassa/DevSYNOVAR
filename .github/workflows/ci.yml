@@ -143,3 +143,58 @@ jobs:
             exit 1
           fi
           echo "OK: smoke test passou (HTTP 200, app carregada, sem Firebase)."
+
+  preview-deploy:
+    # Pré-visualização de um branch antes de o juntar a `main` -- só
+    # corre quando disparado manualmente (nunca em push/PR normais, por
+    # isso nunca interfere com o deploy automático de produção acima).
+    # Publica num subcaminho à parte do mesmo `gh-pages`, sem tocar nos
+    # ficheiros da raiz (produção).
+    name: Pré-visualização (manual)
+    needs: [quality]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build para pré-visualização (base href /DevSYNOVAR/preview/)
+        run: flutter build web --base-href /DevSYNOVAR/preview/
+
+      - name: Preparar artefacto (SPA fallback + .nojekyll)
+        run: |
+          cp build/web/index.html build/web/404.html
+          touch build/web/.nojekyll
+
+      - name: Publicar em gh-pages/preview (sem tocar na raiz)
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add /tmp/preview-deploy origin/gh-pages
+          rm -rf /tmp/preview-deploy/preview
+          mkdir -p /tmp/preview-deploy/preview
+          cp -r build/web/. /tmp/preview-deploy/preview/
+          cd /tmp/preview-deploy
+          git add preview
+          if git diff --cached --quiet; then
+            echo "Nada para publicar (build idêntico à pré-visualização já publicada)."
+          else
+            git commit -m "preview: ${{ github.ref_name }}@${{ github.sha }}"
+            git push origin HEAD:gh-pages
+          fi
+
+      - name: Smoke test da pré-visualização
+        run: |
+          set -e
+          sleep 20
+          code=$(curl -s -o /tmp/index.html -w "%{http_code}" --max-time 20 https://paulinoquicassa.github.io/DevSYNOVAR/preview/)
+          test "$code" = "200" || { echo "::error::HTTP $code na pré-visualização."; exit 1; }
+          echo "OK: pré-visualização publicada em https://paulinoquicassa.github.io/DevSYNOVAR/preview/"

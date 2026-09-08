@@ -7,11 +7,19 @@ class FilaCertaBottomNav extends StatelessWidget {
 
   const FilaCertaBottomNav({super.key, required this.currentIndex, required this.onTap});
 
+  // Fila Certa 2.0 (redesign UX/UI, secção 28 do master prompt): a IA
+  // antiga tinha um separador central ("Entrar na fila") que não era uma
+  // página própria -- tocar nele empurrava sempre a mesma sub-navegação,
+  // quebrando a expectativa normal de uma bottom nav. Substituído por
+  // "Explorar" (descoberta, com o CTA de entrar na fila lá dentro) e
+  // "Minhas filas" (o que está activo agora), com "Histórico" a cobrir o
+  // que já terminou -- os 5 privilegiam exactamente a ordem pedida:
+  // descoberta, fila actual, serviços, histórico, perfil.
   static const _items = <_NavItemData>[
     _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Início'),
-    _NavItemData(icon: Icons.list_alt_outlined, activeIcon: Icons.list_alt, label: 'Os meus\natendimentos'),
-    _NavItemData(icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number, label: 'Entrar na fila'),
-    _NavItemData(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month, label: 'Agendamentos'),
+    _NavItemData(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explorar'),
+    _NavItemData(icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number, label: 'Minhas filas'),
+    _NavItemData(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Histórico'),
     _NavItemData(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Perfil'),
   ];
 

@@ -5,9 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data/mock_data.dart';
 import 'models/app_notification.dart';
 import 'models/appointment.dart';
+import 'models/favorite.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
-import 'models/visit.dart';
 import 'supabase_client.dart';
 import 'ticket_service.dart' as ticket_service;
 
@@ -119,20 +119,72 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
   }
 }
 
-/// "Os meus atendimentos" já é alimentado ao vivo por
-/// `ticket_service.subscribeMyTickets` (ver `my_appointments_screen.dart`)
-/// -- este store fica só como registo local de sessão (não sincronizado,
-/// não lido por nenhum ecrã hoje) para a chamada existente em
-/// `rating_screen.dart` continuar a funcionar sem remover essa gravação.
-class HistoryStore extends ValueNotifier<List<Visit>> {
-  HistoryStore() : super(const []);
+/// Instituições favoritas do utilizador (secção 26 do redesign) -- tabela
+/// `favorites`, mesmo padrão simples de `notifications` (DML directo via
+/// RLS, sem RPC -- não há concorrência nem lógica de fila a proteger
+/// numa preferência pessoal).
+class FavoritesStore extends ValueNotifier<List<Favorite>> {
+  FavoritesStore() : super(const []);
 
-  void addCompleted({required Visit visit}) {
-    value = [visit, ...value];
+  RealtimeChannel? _channel;
+  String? _uid;
+
+  Future<void> _refetch() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final rows = await supabaseClient.from('favorites').select('institution_id, branch_id').eq('user_id', uid);
+    value = (rows as List)
+        .map((row) => Favorite(institutionId: row['institution_id'] as String, branchId: row['branch_id'] as String))
+        .toList();
   }
 
-  Future<void> clearAll() async {
+  void listenTo(String uid) {
+    _channel?.unsubscribe();
+    _uid = uid;
     value = const [];
+    _channel = supabaseClient
+        .channel('favorites:$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'favorites',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+          callback: (_) => _refetch(),
+        )
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) _refetch();
+        });
+  }
+
+  void stopListening() {
+    _channel?.unsubscribe();
+    _channel = null;
+    _uid = null;
+    value = const [];
+  }
+
+  bool isFavorite(String institutionId, String branchId) =>
+      value.any((f) => f.institutionId == institutionId && f.branchId == branchId);
+
+  Future<void> toggle(String institutionId, String branchId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    if (isFavorite(institutionId, branchId)) {
+      value = value.where((f) => !(f.institutionId == institutionId && f.branchId == branchId)).toList();
+      await supabaseClient
+          .from('favorites')
+          .delete()
+          .eq('user_id', uid)
+          .eq('institution_id', institutionId)
+          .eq('branch_id', branchId);
+    } else {
+      value = [...value, Favorite(institutionId: institutionId, branchId: branchId)];
+      await supabaseClient.from('favorites').insert({
+        'user_id': uid,
+        'institution_id': institutionId,
+        'branch_id': branchId,
+      });
+    }
   }
 }
 
@@ -355,16 +407,18 @@ class AppLanguageController extends ValueNotifier<String> {
 }
 
 final appointmentsStore = AppointmentsStore();
-final historyStore = HistoryStore();
+final favoritesStore = FavoritesStore();
 final notificationsStore = NotificationsStore();
 final notificationSettings = NotificationSettings();
 final appLanguageController = AppLanguageController();
 
 /// Liga todos os stores aos dados da conta `uid` — chamado pelo [AuthGate]
 /// quando alguém entra. Cada store passa a espelhar o Postgres em tempo
-/// real.
+/// real. Não chamado para visitantes (modo convidado, Fila Certa 2.0) --
+/// sem conta não há nenhuma destas listas a sincronizar.
 void startUserDataSync(String uid) {
   appointmentsStore.listenTo(uid);
+  favoritesStore.listenTo(uid);
   notificationsStore.listenTo(uid);
   notificationSettings.listenTo(uid);
   appLanguageController.listenTo(uid);
@@ -375,7 +429,7 @@ void startUserDataSync(String uid) {
 /// próxima que entrar no mesmo aparelho.
 void stopUserDataSync() {
   appointmentsStore.stopListening();
-  historyStore.clearAll();
+  favoritesStore.stopListening();
   notificationsStore.stopListening();
   notificationSettings.stopListening();
   appLanguageController.stopListening();

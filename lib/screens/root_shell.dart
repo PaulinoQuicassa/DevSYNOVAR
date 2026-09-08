@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/fila_certa_bottom_nav.dart';
-import 'choose_location_screen.dart';
+import 'explore_screen.dart';
 import 'home_screen.dart';
 import 'my_appointments_screen.dart';
+import 'my_queues_screen.dart';
 import 'profile_screen.dart';
-import 'schedule_screen.dart';
 
-/// Hosts the persistent bottom navigation. Tabs 0, 1, 3 and 4 are simple
-/// pages swapped via [IndexedStack]; tab 2 ("Entrar na fila") has no page
-/// of its own — tapping it pushes the queue-joining flow on the root
-/// navigator instead, which carries its own copy of this same bottom nav
-/// (see [FlowScaffold]) so the chrome never disappears mid-flow.
+/// Hosts the persistent bottom navigation. Fila Certa 2.0 (redesign
+/// UX/UI): todos os 5 separadores são agora páginas reais trocadas via
+/// [IndexedStack] -- a versão anterior tinha um separador central
+/// ("Entrar na fila") que só empurrava uma sub-navegação sem página
+/// própria, o que quebrava a expectativa normal de uma bottom nav (ver
+/// UX Audit Report, achado #16/secção 28). "Entrar na fila" continua a
+/// existir como acção, agora dentro de [ExploreScreen]/[HomeScreen], não
+/// como separador.
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
 
@@ -23,9 +26,9 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   static const _pages = <Widget>[
     HomeScreen(),
+    ExploreScreen(),
+    MyQueuesScreen(),
     MyAppointmentsScreen(),
-    SizedBox.shrink(),
-    ScheduleScreen(),
     ProfileScreen(),
   ];
 
@@ -45,23 +48,12 @@ class _RootShellState extends State<RootShell> {
     if (mounted) setState(() {});
   }
 
-  void _handleTap(int index) {
-    if (index == 2) {
-      Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(builder: (_) => const ChooseLocationScreen()),
-      );
-      return;
-    }
-    rootTabController.value = index;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final activeIndex = rootTabController.value == 2 ? 0 : rootTabController.value;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(child: IndexedStack(index: activeIndex, children: _pages)),
-      bottomNavigationBar: FilaCertaBottomNav(currentIndex: rootTabController.value, onTap: _handleTap),
+      body: SafeArea(child: IndexedStack(index: rootTabController.value, children: _pages)),
+      bottomNavigationBar: FilaCertaBottomNav(currentIndex: rootTabController.value, onTap: (i) => rootTabController.value = i),
     );
   }
 }

@@ -9,6 +9,7 @@ import '../models/service_item.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
+import '../widgets/connection_banner.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/gradient_button.dart';
@@ -34,6 +35,7 @@ class _QueueScreenState extends State<QueueScreen> {
   LiveBoardEntry? _liveBoardEntry;
   int _peopleAhead = 0;
   bool _navigatedToCalled = false;
+  bool _connectionLost = false;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
   StreamSubscription<LiveBoardEntry?>? _boardSub;
@@ -44,20 +46,27 @@ class _QueueScreenState extends State<QueueScreen> {
     super.initState();
     final ref = widget.liveTicket;
     if (ref == null) return;
-    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate);
+    _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate, onError: _onStreamError);
     _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen((entry) {
       if (mounted) setState(() => _liveBoardEntry = entry);
-    });
+    }, onError: _onStreamError);
+  }
+
+  void _onStreamError(Object _) {
+    if (mounted) setState(() => _connectionLost = true);
   }
 
   void _onTicketUpdate(LiveTicket? ticket) {
     if (!mounted) return;
     final wasSubscribedToAhead = _ticket != null;
-    setState(() => _ticket = ticket);
+    setState(() {
+      _ticket = ticket;
+      _connectionLost = false;
+    });
     if (!wasSubscribedToAhead && ticket?.createdAt != null) {
       _aheadSub = ticket_service.subscribeWaitingAhead(widget.liveTicket!, ticket!.createdAt!).listen((count) {
         if (mounted) setState(() => _peopleAhead = count);
-      });
+      }, onError: _onStreamError);
     }
     if (ticket?.status == TicketStatus.serving && !_navigatedToCalled) {
       _navigatedToCalled = true;
@@ -149,6 +158,7 @@ class _QueueScreenState extends State<QueueScreen> {
             trailingIcon: Icons.help_outline,
             onTrailing: () => _showHelp(context),
           ),
+          ConnectionBanner(visible: _connectionLost),
           const SizedBox(height: 8),
           LocationSummaryCard(location: widget.location, tag: widget.service.name),
           const SizedBox(height: 16),

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
-import '../app_state.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
@@ -14,7 +12,7 @@ import '../widgets/screen_header.dart';
 import '../widgets/service_card.dart';
 import '../widgets/status_pill.dart';
 import 'schedule_datetime_screen.dart';
-import 'queue_screen.dart';
+import 'service_confirm_screen.dart';
 
 class ChooseServiceScreen extends StatefulWidget {
   final QueueLocation location;
@@ -58,50 +56,21 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
     return all.where((s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q)).toList();
   }
 
-  Future<void> _selectService(BuildContext context, ServiceItem service) async {
+  void _selectService(BuildContext context, ServiceItem service) {
     if (widget.isScheduling) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => ScheduleDateTimeScreen(location: widget.location, service: service)),
       );
       return;
     }
-
-    final institutionId = widget.location.institutionId;
-    final branchId = widget.location.branchId;
-    if (institutionId == null || branchId == null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: service)),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+    // Fila Certa 2.0: a decisão de entrar na fila passa primeiro por um
+    // ecrã de confirmação explícito (secção 15 do redesign -- espera,
+    // documentos, "quando sair") em vez de puxar a senha logo ao tocar
+    // no serviço. `ServiceConfirmScreen` trata do pedido de conta
+    // contextual e da chamada real a `pullTicket`.
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ServiceConfirmScreen(location: widget.location, service: service)),
     );
-    try {
-      final ref = await ticket_service.pullTicket(
-        institutionId: institutionId,
-        branchId: branchId,
-        serviceName: service.name,
-      );
-      addActiveTicket(ref);
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // fecha o spinner
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: service, liveTicket: ref)),
-      );
-    } catch (e, stackTrace) {
-      unawaited(Sentry.captureException(e, stackTrace: stackTrace, withScope: (scope) {
-        scope.setContexts('queue', {'institutionId': institutionId, 'branchId': branchId, 'service': service.name});
-      }));
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // fecha o spinner
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível tirar a senha. Tente novamente.')),
-      );
-    }
   }
 
   @override
@@ -109,7 +78,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
     final results = _filtered;
 
     return FlowScaffold(
-      currentIndex: widget.isScheduling ? 3 : 2,
+      currentIndex: widget.isScheduling ? 2 : 1,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         children: [

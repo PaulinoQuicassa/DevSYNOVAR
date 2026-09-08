@@ -69,7 +69,7 @@ class _ScheduleDateTimeScreenState extends State<ScheduleDateTimeScreen> {
     final canConfirm = _selectedDay != null && _selectedTime != null;
 
     return FlowScaffold(
-      currentIndex: 3,
+      currentIndex: 2,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [

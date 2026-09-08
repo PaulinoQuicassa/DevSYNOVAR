@@ -70,7 +70,7 @@ class _ChooseLocationScreenState extends State<ChooseLocationScreen> {
     final results = _filtered;
 
     return FlowScaffold(
-      currentIndex: widget.isScheduling ? 3 : 2,
+      currentIndex: widget.isScheduling ? 2 : 1,
       body: Column(
         children: [
           Padding(
