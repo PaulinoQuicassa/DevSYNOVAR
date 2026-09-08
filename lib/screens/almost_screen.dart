@@ -211,7 +211,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: AppColors.almostGradient,
+              color: AppColors.amber,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 14))],
             ),

@@ -4,7 +4,7 @@ import '../data/mock_data.dart';
 import '../models/favorite.dart';
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
-import '../widgets/location_card.dart';
+import '../widgets/institution_card.dart';
 import 'choose_service_screen.dart';
 
 /// "Os seus favoritos" (secção 26 do redesign).
@@ -59,7 +59,7 @@ class FavoritesScreen extends StatelessWidget {
               children: locations
                   .map((loc) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: LocationCard(
+                        child: InstitutionCard(
                           location: loc,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => ChooseServiceScreen(location: loc)),

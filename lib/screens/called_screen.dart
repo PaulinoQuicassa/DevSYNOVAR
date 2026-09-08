@@ -298,7 +298,7 @@ class _CalledScreenState extends State<CalledScreen> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 14))],
             ),
@@ -448,7 +448,7 @@ class _CalledScreenState extends State<CalledScreen> {
           GradientButton(
             label: _onTheWaySent ? 'Aviso enviado ✓' : 'Estou a caminho',
             icon: Icons.check_circle_outline,
-            gradient: const LinearGradient(colors: [AppColors.success, Color(0xFF15803D)]),
+            color: AppColors.success,
             shadowColor: AppColors.success,
             onTap: _onTheWaySent ? null : _onTheWay,
           ),

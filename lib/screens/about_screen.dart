@@ -19,7 +19,7 @@ class AboutScreen extends StatelessWidget {
               child: Container(
                 width: 72,
                 height: 72,
-                decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
                 child: const Icon(Icons.confirmation_number_outlined, color: Colors.white, size: 32),
               ),
             ),

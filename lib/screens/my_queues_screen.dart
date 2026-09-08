@@ -134,7 +134,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(AppRadius.lg)),
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.lg)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

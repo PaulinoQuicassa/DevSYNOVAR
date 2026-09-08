@@ -96,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 72,
                     height: 72,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(20)),
+                    decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(20)),
                     child: const Icon(Icons.confirmation_number_rounded, color: Colors.white, size: 34),
                   ),
                   const SizedBox(height: 24),

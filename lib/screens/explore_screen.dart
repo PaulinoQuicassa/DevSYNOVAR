@@ -6,7 +6,7 @@ import '../location_service.dart' as location_service;
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
-import '../widgets/location_card.dart';
+import '../widgets/institution_card.dart';
 import '../widgets/queue_insight_widgets.dart';
 import 'choose_service_screen.dart';
 import 'service_confirm_screen.dart';
@@ -238,7 +238,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           else
             ...locationResults.map((loc) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LocationCard(location: loc, onTap: () => _openLocation(loc)),
+                  child: InstitutionCard(location: loc, onTap: () => _openLocation(loc)),
                 )),
         ],
       ],

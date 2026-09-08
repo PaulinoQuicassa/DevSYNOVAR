@@ -15,12 +15,16 @@ class FilaCertaBottomNav extends StatelessWidget {
   // "Minhas filas" (o que está activo agora), com "Histórico" a cobrir o
   // que já terminou -- os 5 privilegiam exactamente a ordem pedida:
   // descoberta, fila actual, serviços, histórico, perfil.
+  // Rótulos em minúsculas (regra da marca) -- "senhas" em vez de "minhas
+  // filas": "fila" é o conceito geral/nome do produto, "senha" é o número
+  // específico do lugar de alguém, e este separador mostra exactamente
+  // as senhas activas do utilizador.
   static const _items = <_NavItemData>[
-    _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Início'),
-    _NavItemData(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explorar'),
-    _NavItemData(icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number, label: 'Minhas filas'),
-    _NavItemData(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'Histórico'),
-    _NavItemData(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Perfil'),
+    _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'início'),
+    _NavItemData(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'explorar'),
+    _NavItemData(icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number, label: 'senhas'),
+    _NavItemData(icon: Icons.history_outlined, activeIcon: Icons.history, label: 'histórico'),
+    _NavItemData(icon: Icons.person_outline, activeIcon: Icons.person, label: 'perfil'),
   ];
 
   @override
