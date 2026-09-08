@@ -351,7 +351,7 @@ class _CategoryChips extends StatelessWidget {
           _Chip(label: 'todas', icon: Icons.apps_rounded, color: AppColors.textSecondary, background: AppColors.borderLight, selected: selected == null, onTap: () => onSelected(null)),
           const SizedBox(width: 8),
           _Chip(
-            label: InstitutionCategory.bank.label + 's',
+            label: '${InstitutionCategory.bank.label}s',
             icon: Icons.account_balance_outlined,
             color: AppColors.onAmberMedium,
             background: AppColors.amberBg,
