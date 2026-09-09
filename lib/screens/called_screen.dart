@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
@@ -179,11 +180,26 @@ class _CalledScreenState extends State<CalledScreen> {
 
   // "Cheguei" (secção 20) -- passou a gravar no servidor
   // (`report_customer_arrived`), visível em tempo real no ecrã do
-  // agente e contabilizado no dashboard do gestor.
+  // agente e contabilizado no dashboard do gestor. Espera pelo
+  // resultado real (a versão anterior era fire-and-forget -- se a RPC
+  // fosse recusada, ex.: a senha já tinha sido concluída entretanto, o
+  // cliente nunca saberia e o balcão nunca via o aviso).
   Future<void> _markArrived() async {
-    setState(() => _arrived = true);
     final ref = widget.liveTicket;
-    if (ref != null) unawaited(ticket_service.reportArrived(ref));
+    if (ref == null) {
+      setState(() => _arrived = true);
+      return;
+    }
+    try {
+      await ticket_service.reportArrived(ref);
+      if (mounted) setState(() => _arrived = true);
+    } catch (e, stackTrace) {
+      unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível avisar o balcão. Tente novamente.')),
+      );
+    }
   }
 
   // "Estou atrasado" (secção 19) -- "Tenho condições para chegar" grava
@@ -233,7 +249,19 @@ class _CalledScreenState extends State<CalledScreen> {
       await _cannotAttend(context);
     } else if (choice == 'ok' && context.mounted) {
       final ref = widget.liveTicket;
-      if (ref != null) unawaited(ticket_service.reportDelay(ref));
+      if (ref != null) {
+        try {
+          await ticket_service.reportDelay(ref);
+        } catch (e, stackTrace) {
+          unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível avisar o balcão. Tente novamente.')),
+          );
+          return;
+        }
+      }
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Avisámos o balcão que vai demorar mais um pouco.')),
       );
