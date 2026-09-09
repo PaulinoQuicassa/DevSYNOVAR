@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../auth/require_auth.dart';
 import '../domain/queue_insights.dart';
@@ -70,11 +71,19 @@ class _ServiceConfirmScreenState extends State<ServiceConfirmScreen> {
         MaterialPageRoute(builder: (_) => QueueScreen(location: widget.location, service: widget.service, liveTicket: ref)),
       );
     } catch (e, stackTrace) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      // "já tem uma senha activa para este serviço" (pull_ticket) não é um
+      // bug -- é a regra de negócio pedida (uma senha por serviço) a
+      // impedir um duplo-toque/reload; mostra a mensagem tal e qual, sem
+      // reportar ao Sentry.
+      if (e is PostgrestException && e.message.contains('já tem uma senha activa')) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        return;
+      }
       unawaited(Sentry.captureException(e, stackTrace: stackTrace, withScope: (scope) {
         scope.setContexts('queue', {'institutionId': institutionId, 'branchId': branchId, 'service': widget.service.name});
       }));
-      if (!mounted) return;
-      setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Não foi possível tirar a senha. Tente novamente.')),
       );
