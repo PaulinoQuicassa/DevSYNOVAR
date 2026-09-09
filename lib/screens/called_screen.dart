@@ -7,6 +7,7 @@ import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
 import '../models/queue_location.dart';
 import '../models/service_item.dart';
+import '../platform/alert_sound.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 import '../widgets/confirm_dialog.dart';
@@ -123,7 +124,7 @@ class _CalledScreenState extends State<CalledScreen> {
     _lastBoardUpdatedAt = entry.updatedAt ?? _lastBoardUpdatedAt;
     if (!isRecall) return;
     HapticFeedback.mediumImpact();
-    SystemSound.play(SystemSoundType.alert);
+    playAlertSound();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Estão a chamar-te novamente!')),
     );

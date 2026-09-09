@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app_state.dart';
+import '../platform/alert_sound.dart';
 import '../app_stores.dart';
 import '../models/live_ticket.dart';
 import '../theme/app_theme.dart';
@@ -182,7 +183,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
     HapticFeedback.mediumImpact();
-    SystemSound.play(SystemSoundType.alert);
+    playAlertSound();
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => _GlobalAlertBanner(
