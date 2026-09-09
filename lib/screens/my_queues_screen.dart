@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../ticket_navigation.dart';
 import '../ticket_service.dart' as ticket_service;
 import '../widgets/bank_logo.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/status_pill.dart';
 import 'appointment_detail_screen.dart';
@@ -105,6 +106,29 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
     await openLiveTicketScreen(nav, t.ref, live);
   }
 
+  // Antes disto, só era possível abandonar uma senha a partir de dentro
+  // do ecrã de acompanhamento (era preciso tocar na senha primeiro) --
+  // pedido explícito para haver sempre uma acção directa aqui na lista,
+  // sem esse passo extra.
+  Future<void> _abandonTicket(BuildContext context, MyTicket t) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Abandonar esta senha?',
+      message: 'Perde o seu lugar na senha ${t.code} (${t.serviceName}). Vai ter de entrar novamente na fila.',
+      confirmLabel: 'Abandonar',
+      danger: true,
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ticket_service.cancelTicket(t.ref);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abandonar a senha. Tente novamente.')),
+      );
+    }
+  }
+
   Future<void> _startQueueing(BuildContext context) async {
     final ok = await requireAuth(context, reason: 'Precisa de uma conta para guardar o seu lugar na fila e avisá-lo quando for a sua vez.');
     if (!ok || !context.mounted) return;
@@ -191,24 +215,39 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          BankLogo(monogram: t.location.monogram, color: t.location.brandColor, size: 44),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(t.location.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.25)),
-                                const SizedBox(height: 2),
-                                Text(t.serviceName, style: AppTextStyles.bodySmall),
-                                const SizedBox(height: 6),
-                                Text('Senha ${t.code}', style: AppTextStyles.caption),
-                              ],
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              BankLogo(monogram: t.location.monogram, color: t.location.brandColor, size: 44),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(t.location.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.25)),
+                                    const SizedBox(height: 2),
+                                    Text(t.serviceName, style: AppTextStyles.bodySmall),
+                                    const SizedBox(height: 6),
+                                    Text('Senha ${t.code}', style: AppTextStyles.caption),
+                                  ],
+                                ),
+                              ),
+                              StatusPill(label: display.label, color: display.color, background: display.background, icon: display.icon),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => _abandonTicket(context, t),
+                              icon: const Icon(Icons.close, size: 16, color: AppColors.critical),
+                              label: const Text('Abandonar', style: TextStyle(color: AppColors.critical, fontWeight: FontWeight.w600)),
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
                             ),
                           ),
-                          StatusPill(label: display.label, color: display.color, background: display.background, icon: display.icon),
                         ],
                       ),
                     ),
