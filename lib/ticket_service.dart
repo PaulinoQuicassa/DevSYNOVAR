@@ -346,6 +346,20 @@ Future<void> setOnTheWay(LiveTicketRef ref) {
   return supabaseClient.rpc('set_on_the_way', params: {'p_ticket_id': ref.ticketId});
 }
 
+/// O cliente confirma que já chegou fisicamente ao local ("Cheguei") --
+/// antes disto só existia como estado local do ecrã, sem chegar ao
+/// agente nem ao dashboard.
+Future<void> reportArrived(LiveTicketRef ref) {
+  return supabaseClient.rpc('report_customer_arrived', params: {'p_ticket_id': ref.ticketId});
+}
+
+/// O cliente avisa que vai demorar mais um pouco, mas continua a
+/// caminho ("Estou atrasado" → "Tenho condições para chegar") --
+/// distinto de [cancelTicket] ("Não vou conseguir chegar").
+Future<void> reportDelay(LiveTicketRef ref) {
+  return supabaseClient.rpc('report_customer_delay', params: {'p_ticket_id': ref.ticketId});
+}
+
 /// Reserva o próximo código de agendamento sem colisão (`AG001`,
 /// `AG002`, ...) -- mesma sequência partilhada das senhas
 /// (`branch_counters` no servidor). Só chamado para localizações reais;

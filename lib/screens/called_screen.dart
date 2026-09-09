@@ -177,22 +177,22 @@ class _CalledScreenState extends State<CalledScreen> {
     );
   }
 
-  // "Cheguei" (secção 20 do redesign) -- marcador só local: não há
-  // nenhum campo no servidor para "chegou ao local" (a app do balcão só
-  // trabalha com waiting/serving/done/no_show), por isso isto não avisa
-  // a equipa -- é só para o próprio utilizador confirmar visualmente que
-  // já não precisa de se preocupar em vir a caminho. Documentado como
-  // pendência no relatório final: uma integração real exigiria um campo
-  // novo, fora do âmbito desta ronda (secção 44 -- não alterar o
-  // staff/admin sem necessidade clara).
-  void _markArrived() => setState(() => _arrived = true);
+  // "Cheguei" (secção 20) -- passou a gravar no servidor
+  // (`report_customer_arrived`), visível em tempo real no ecrã do
+  // agente e contabilizado no dashboard do gestor.
+  Future<void> _markArrived() async {
+    setState(() => _arrived = true);
+    final ref = widget.liveTicket;
+    if (ref != null) unawaited(ticket_service.reportArrived(ref));
+  }
 
-  // "Estou atrasado" (secção 19) -- as regras finais de tolerância a
-  // atraso são uma decisão de negócio por instituição que o backend não
-  // implementa hoje (nenhuma RPC de "estender tempo"). Em vez de fingir
-  // que a fila espera automaticamente, isto só gere expectativa com
-  // texto honesto e, se a pessoa admitir que não vai conseguir chegar,
-  // encaminha para a acção real já existente (`cancelTicket`).
+  // "Estou atrasado" (secção 19) -- "Tenho condições para chegar" grava
+  // agora um aviso real (`report_customer_delay`), visível no ecrã do
+  // agente e contabilizado no dashboard. As regras finais de tolerância
+  // continuam a ser uma decisão da equipa no balcão (não existe nenhuma
+  // RPC de "estender tempo" -- isto é só um aviso, nunca garante nada);
+  // se a pessoa admitir que não vai conseguir chegar, continua a
+  // encaminhar para a acção real já existente (`cancelTicket`).
   Future<void> _runningLate(BuildContext context) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -232,8 +232,10 @@ class _CalledScreenState extends State<CalledScreen> {
     if (choice == 'cannot' && context.mounted) {
       await _cannotAttend(context);
     } else if (choice == 'ok' && context.mounted) {
+      final ref = widget.liveTicket;
+      if (ref != null) unawaited(ticket_service.reportDelay(ref));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ok — dirija-se ao balcão assim que puder.')),
+        const SnackBar(content: Text('Avisámos o balcão que vai demorar mais um pouco.')),
       );
     }
   }
