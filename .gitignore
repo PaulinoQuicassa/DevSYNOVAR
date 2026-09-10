@@ -52,3 +52,7 @@ app.*.map.json
 
 # Firebase CLI local deploy cache
 .firebase/
+
+# Mockup de design de referência (não é código da app -- ver o seu
+# próprio README.md, "treat it as a REFERENCE MOCKUP, not production code").
+/DashBoard_Inteligente/
