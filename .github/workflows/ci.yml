@@ -4,13 +4,15 @@ name: CI/CD — Fila Certa (cliente Flutter)
 # workflows/ci.yml), adaptado à realidade Flutter/web deste repo:
 #
 #   Código → flutter analyze → flutter test → build web → Deploy → Smoke Test
+#                                            → build Android (validação, ver docs/android-release.md)
 #
 # Sem testes de Supabase aqui -- os caminhos de dados novos desta app já
 # são cobertos pelo scripts/test-flutter-data-paths.mjs no repo da
 # equipa (corre contra o Supabase local efémero desse CI). Este pipeline
 # valida o que é específico deste repo: análise estática, os testes de
 # widget existentes (documentados como skip -- ver test/widget_test.dart),
-# e a app web publicada.
+# a app web publicada, e que a app ainda compila para Android (só
+# validação -- essa APK usa a chave de debug, nunca é a que se publica).
 
 on:
   push:
@@ -94,6 +96,36 @@ jobs:
         with:
           name: web-build
           path: build/web
+
+  build-android:
+    # Só confirma que a app compila para Android (com a chave de debug --
+    # sem key.properties aqui, ver docs/android-release.md). Independente
+    # do deploy web: nunca bloqueia a publicação do site por causa disto.
+    name: Build Android (APK de validação)
+    needs: [quality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build APK (release, assinado com a chave de debug -- só para validar que compila)
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug-signed
+          path: build/app/outputs/flutter-apk/app-release.apk
 
   deploy:
     name: Deploy (GitHub Pages) + Smoke Test

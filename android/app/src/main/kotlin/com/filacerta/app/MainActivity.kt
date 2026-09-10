@@ -1,4 +1,4 @@
-package com.example.fila_certa_app
+package com.filacerta.app
 
 import io.flutter.embedding.android.FlutterActivity
 
