@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../app_stores.dart';
@@ -112,7 +113,18 @@ class _AlmostScreenState extends State<AlmostScreen> {
     );
     if (!confirmed) return;
     final ref = widget.liveTicket;
-    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (ref != null) {
+      try {
+        await ticket_service.cancelTicket(ref);
+      } catch (e, stackTrace) {
+        unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível sair da fila. Tente novamente.')),
+        );
+        return;
+      }
+    }
     if (mounted) goToRootTab(context, 0);
   }
 

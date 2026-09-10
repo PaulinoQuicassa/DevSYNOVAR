@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../app_state.dart';
 import '../data/mock_data.dart';
 import '../models/live_ticket.dart';
@@ -111,7 +112,18 @@ class _QueueScreenState extends State<QueueScreen> {
     );
     if (!confirmed) return;
     final ref = widget.liveTicket;
-    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (ref != null) {
+      try {
+        await ticket_service.cancelTicket(ref);
+      } catch (e, stackTrace) {
+        unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível sair da fila. Tente novamente.')),
+        );
+        return;
+      }
+    }
     if (context.mounted) goToRootTab(context, 0);
   }
 

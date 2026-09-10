@@ -334,8 +334,10 @@ MyTicket _myTicketFromRow(
 /// O próprio cliente desiste da senha (sair da fila, ou avisar que não
 /// pode comparecer já depois de chamado) -- via `cancel_ticket`, que
 /// confirma no servidor que a senha é mesmo do utilizador autenticado.
-/// Fire-and-forget pelos ecrãs, para não bloquear a navegação nem rebentar
-/// se o servidor recusar (ex.: senha já concluída).
+/// Os ecrãs devem sempre esperar (`await`) por este resultado antes de
+/// navegar/actualizar a UI: se o servidor recusar (ex.: senha já
+/// concluída pela equipa nesse instante), quem chamou precisa de saber
+/// para não dar a senha como abandonada quando na verdade continua activa.
 Future<void> cancelTicket(LiveTicketRef ref) {
   return supabaseClient.rpc('cancel_ticket', params: {'p_ticket_id': ref.ticketId});
 }

@@ -170,9 +170,22 @@ class _CalledScreenState extends State<CalledScreen> {
   Future<void> _onTheWay() async {
     if (_onTheWaySent) return;
     final ref = widget.liveTicket;
-    setState(() => _onTheWaySent = true);
-    if (ref != null) unawaited(ticket_service.setOnTheWay(ref));
+    if (ref == null) {
+      setState(() => _onTheWaySent = true);
+      return;
+    }
+    try {
+      await ticket_service.setOnTheWay(ref);
+    } catch (e, stackTrace) {
+      unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível avisar o balcão. Tente novamente.')),
+      );
+      return;
+    }
     if (!mounted) return;
+    setState(() => _onTheWaySent = true);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Avisámos o balcão que está a caminho.')),
     );
@@ -279,7 +292,18 @@ class _CalledScreenState extends State<CalledScreen> {
     );
     if (!confirmed) return;
     final ref = widget.liveTicket;
-    if (ref != null) unawaited(ticket_service.cancelTicket(ref));
+    if (ref != null) {
+      try {
+        await ticket_service.cancelTicket(ref);
+      } catch (e, stackTrace) {
+        unawaited(Sentry.captureException(e, stackTrace: stackTrace));
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível sair da fila. Tente novamente.')),
+        );
+        return;
+      }
+    }
     if (context.mounted) goToRootTab(context, 0);
   }
 
