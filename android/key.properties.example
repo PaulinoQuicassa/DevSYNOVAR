@@ -1,0 +1,7 @@
+## Copiar para "key.properties" (sem ".example") nesta mesma pasta,
+## preencher com os valores reais da keystore de produção, e NUNCA
+## commitar esse ficheiro (já está no .gitignore). Ver docs/android-release.md.
+storePassword=
+keyPassword=
+keyAlias=
+storeFile=
