@@ -45,9 +45,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             _SettingSwitch(
               icon: Icons.event_available_outlined,
               title: 'Lembretes de agendamento',
-              subtitle: 'Avisos antes de um agendamento marcado.',
+              subtitle: 'Avisos antes de um agendamento marcado -- em preparação, ainda não chega a avisar ninguém.',
               value: notificationSettings.appointmentReminders,
               onChanged: (_) => notificationSettings.toggle('appointmentReminders'),
+              enabled: false,
             ),
             _SettingSwitch(
               icon: Icons.chat_bubble_outline,
@@ -76,6 +77,7 @@ class _SettingSwitch extends StatelessWidget {
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool enabled;
 
   const _SettingSwitch({
     required this.icon,
@@ -83,6 +85,7 @@ class _SettingSwitch extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
+    this.enabled = true,
   });
 
   @override
@@ -102,20 +105,39 @@ class _SettingSwitch extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 18, color: AppColors.primary),
+            child: Icon(icon, size: 18, color: enabled ? AppColors.primary : AppColors.textMuted),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                      ),
+                    ),
+                    if (!enabled) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(999)),
+                        child: const Text('Brevemente', style: TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 3),
                 Text(subtitle, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.35)),
               ],
             ),
           ),
-          Switch.adaptive(value: value, onChanged: onChanged, activeThumbColor: AppColors.primary),
+          Switch.adaptive(value: enabled && value, onChanged: enabled ? onChanged : null, activeThumbColor: AppColors.primary),
         ],
       ),
     );
