@@ -23,13 +23,21 @@ class AppointmentDetailScreen extends StatelessWidget {
       cancelLabel: 'Manter',
       danger: true,
     );
-    if (confirmed && context.mounted) {
-      appointmentsStore.cancel(appointment);
-      Navigator.of(context).pop();
+    if (!confirmed || !context.mounted) return;
+    try {
+      await appointmentsStore.cancel(appointment);
+    } catch (_) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agendamento cancelado.')),
+        const SnackBar(content: Text('Não foi possível cancelar o agendamento. Tente novamente.')),
       );
+      return;
     }
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Agendamento cancelado.')),
+    );
   }
 
   @override

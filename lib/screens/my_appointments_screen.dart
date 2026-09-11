@@ -24,7 +24,10 @@ class MyAppointmentsScreen extends StatefulWidget {
 }
 
 class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
-  final Map<String, List<MyTicket>> _byInstitution = {};
+  // Chave "institutionId|branchId", não só institutionId -- ver o mesmo
+  // comentário em my_queues_screen.dart: uma instituição com 2+ filiais
+  // fazia a segunda sobrescrever a primeira neste mapa.
+  final Map<String, List<MyTicket>> _byLocation = {};
   final List<StreamSubscription<List<MyTicket>>> _subs = [];
   StreamSubscription<User?>? _authSub;
   String? _subscribedUid;
@@ -47,7 +50,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       sub.cancel();
     }
     _subs.clear();
-    _byInstitution.clear();
+    _byLocation.clear();
     _subscribedUid = uid;
     if (uid == null) {
       if (mounted) setState(() {});
@@ -55,9 +58,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     }
     for (final location in MockData.locations) {
       if (location.institutionId == null || location.branchId == null) continue;
+      final key = '${location.institutionId}|${location.branchId}';
       _subs.add(ticket_service.subscribeMyTickets(location, uid).listen((tickets) {
         if (!mounted) return;
-        setState(() => _byInstitution[location.institutionId!] = tickets);
+        setState(() => _byLocation[key] = tickets);
       }));
     }
   }
@@ -72,7 +76,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   }
 
   List<MyTicket> get _pastTickets {
-    final all = _byInstitution.values.expand((l) => l).where((t) => !t.isActive).toList();
+    final all = _byLocation.values.expand((l) => l).where((t) => !t.isActive).toList();
     all.sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
     return all;
   }

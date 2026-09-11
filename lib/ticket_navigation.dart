@@ -16,7 +16,7 @@ import 'ticket_service.dart' as ticket_service;
 Future<void> openLiveTicketScreen(NavigatorState nav, LiveTicketRef ref, LiveTicket ticket) async {
   QueueLocation? location;
   for (final loc in MockData.locations) {
-    if (loc.institutionId == ref.institutionId) {
+    if (loc.institutionId == ref.institutionId && loc.branchId == ref.branchId) {
       location = loc;
       break;
     }

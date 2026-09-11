@@ -41,27 +41,36 @@ class _ScheduleDateTimeScreenState extends State<ScheduleDateTimeScreen> {
     final branchId = widget.location.branchId;
 
     setState(() => _confirming = true);
-    // Localização piloto: código reservado atomicamente (mesma sequência
-    // das senhas), para nunca colidir entre clientes diferentes no
-    // espelho institucional partilhado. Localizações mock: código local,
-    // sem risco, porque nunca sai da coleção privada do próprio cliente.
-    final code = institutionId != null && branchId != null
-        ? await ticket_service.nextAppointmentCode(institutionId, branchId)
-        : 'AG-${1000 + appointmentsStore.value.length + DateTime.now().second}';
-    if (!mounted) return;
+    try {
+      // Localização piloto: código reservado atomicamente (mesma sequência
+      // das senhas), para nunca colidir entre clientes diferentes no
+      // espelho institucional partilhado. Localizações mock: código local,
+      // sem risco, porque nunca sai da coleção privada do próprio cliente.
+      final code = institutionId != null && branchId != null
+          ? await ticket_service.nextAppointmentCode(institutionId, branchId)
+          : 'AG-${1000 + appointmentsStore.value.length + DateTime.now().second}';
+      if (!mounted) return;
 
-    final appointment = Appointment(
-      code: code,
-      location: widget.location,
-      service: widget.service,
-      date: DateTime(day.year, day.month, day.day),
-      time: _selectedTime!,
-    );
-    appointmentsStore.add(appointment);
-    setState(() => _confirming = false);
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AppointmentConfirmedScreen(appointment: appointment)),
-    );
+      final appointment = Appointment(
+        code: code,
+        location: widget.location,
+        service: widget.service,
+        date: DateTime(day.year, day.month, day.day),
+        time: _selectedTime!,
+      );
+      await appointmentsStore.add(appointment);
+      if (!mounted) return;
+      setState(() => _confirming = false);
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => AppointmentConfirmedScreen(appointment: appointment)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _confirming = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível confirmar o agendamento. Tente novamente.')),
+      );
+    }
   }
 
   @override

@@ -90,24 +90,48 @@ class AppointmentsStore extends ValueNotifier<List<Appointment>> {
     value = const [];
   }
 
-  void add(Appointment appointment) {
+  /// Actualiza a lista logo (resposta instantânea na UI), mas espera
+  /// mesmo pelo `schedule_appointment` no servidor antes de dar como
+  /// concluído -- se falhar (rede, RLS, código já usado), desfaz a
+  /// alteração local e propaga o erro, para quem chamou poder mostrar
+  /// isso ao cliente em vez de navegar para "agendamento confirmado" com
+  /// um agendamento que nunca chegou a existir no servidor.
+  Future<void> add(Appointment appointment) async {
     final institutionId = appointment.location.institutionId;
     final branchId = appointment.location.branchId;
-    if (institutionId == null || branchId == null) return;
+    if (institutionId == null || branchId == null) {
+      value = [...value, appointment]..sort((a, b) => a.date.compareTo(b.date));
+      return;
+    }
     value = [...value, appointment]..sort((a, b) => a.date.compareTo(b.date));
-    unawaited(ticket_service.scheduleAppointment(
-      institutionId: institutionId,
-      branchId: branchId,
-      code: appointment.code,
-      serviceName: appointment.service.name,
-      date: appointment.date,
-      time: appointment.time,
-    ));
+    try {
+      await ticket_service.scheduleAppointment(
+        institutionId: institutionId,
+        branchId: branchId,
+        code: appointment.code,
+        serviceName: appointment.service.name,
+        date: appointment.date,
+        time: appointment.time,
+      );
+    } catch (_) {
+      value = value.where((a) => a.code != appointment.code).toList();
+      rethrow;
+    }
   }
 
-  void cancel(Appointment appointment) {
+  /// Mesmo raciocínio de [add]: remove logo da UI, mas se o
+  /// `cancel_appointment` falhar no servidor, repõe o agendamento na
+  /// lista e propaga o erro -- sem isto o cliente via "cancelado" mesmo
+  /// que continuasse marcado no servidor.
+  Future<void> cancel(Appointment appointment) async {
+    final previous = value;
     value = value.where((a) => a.code != appointment.code).toList();
-    unawaited(ticket_service.cancelAppointmentMirror(code: appointment.code));
+    try {
+      await ticket_service.cancelAppointmentMirror(code: appointment.code);
+    } catch (_) {
+      value = previous;
+      rethrow;
+    }
   }
 
   Future<void> clearAll() async {
