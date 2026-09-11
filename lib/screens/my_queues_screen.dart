@@ -36,7 +36,12 @@ class MyQueuesScreen extends StatefulWidget {
 }
 
 class _MyQueuesScreenState extends State<MyQueuesScreen> {
-  final Map<String, List<MyTicket>> _byInstitution = {};
+  // Chave "institutionId|branchId", não só institutionId -- uma
+  // instituição com 2+ filiais tem uma entrada de MockData.locations
+  // por filial, e usar só institutionId como chave fazia a segunda
+  // filial sobrescrever a primeira no mapa (senhas activas dessa outra
+  // filial desapareciam da lista em silêncio).
+  final Map<String, List<MyTicket>> _byLocation = {};
   final List<StreamSubscription<List<MyTicket>>> _subs = [];
   StreamSubscription<User?>? _authSub;
   String? _subscribedUid;
@@ -59,7 +64,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
       sub.cancel();
     }
     _subs.clear();
-    _byInstitution.clear();
+    _byLocation.clear();
     _subscribedUid = uid;
     if (uid == null) {
       if (mounted) setState(() {});
@@ -67,9 +72,10 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
     }
     for (final location in MockData.locations) {
       if (location.institutionId == null || location.branchId == null) continue;
+      final key = '${location.institutionId}|${location.branchId}';
       _subs.add(ticket_service.subscribeMyTickets(location, uid).listen((tickets) {
         if (!mounted) return;
-        setState(() => _byInstitution[location.institutionId!] = tickets);
+        setState(() => _byLocation[key] = tickets);
       }));
     }
   }
@@ -84,7 +90,7 @@ class _MyQueuesScreenState extends State<MyQueuesScreen> {
   }
 
   List<MyTicket> get _activeTickets {
-    final all = _byInstitution.values.expand((l) => l).where((t) => t.isActive).toList();
+    final all = _byLocation.values.expand((l) => l).where((t) => t.isActive).toList();
     all.sort((a, b) => (a.createdAt ?? DateTime(0)).compareTo(b.createdAt ?? DateTime(0)));
     return all;
   }
