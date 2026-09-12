@@ -293,7 +293,6 @@ class NotificationSettings extends ChangeNotifier {
   bool queueAlerts = true;
   bool appointmentReminders = true;
   bool promotions = false;
-  bool whatsapp = true;
 
   RealtimeChannel? _channel;
   String? _uid;
@@ -303,14 +302,13 @@ class NotificationSettings extends ChangeNotifier {
     if (uid == null) return;
     final row = await supabaseClient
         .from('user_settings')
-        .select('queue_alerts, appointment_reminders, promotions, whatsapp')
+        .select('queue_alerts, appointment_reminders, promotions')
         .eq('user_id', uid)
         .maybeSingle();
     if (row == null) return;
     queueAlerts = row['queue_alerts'] as bool? ?? queueAlerts;
     appointmentReminders = row['appointment_reminders'] as bool? ?? appointmentReminders;
     promotions = row['promotions'] as bool? ?? promotions;
-    whatsapp = row['whatsapp'] as bool? ?? whatsapp;
     notifyListeners();
   }
 
@@ -343,9 +341,19 @@ class NotificationSettings extends ChangeNotifier {
     queueAlerts = true;
     appointmentReminders = true;
     promotions = false;
-    whatsapp = true;
   }
 
+  // Notificações por WhatsApp NÃO passam por aqui -- têm o próprio
+  // ecrã (`notification_settings_screen.dart`), que chama
+  // `setWhatsappNotifications`/`fetchWhatsappStatus`
+  // (`ticket_service.dart`) contra `whatsapp_contacts` + telefone
+  // verificado, a única fonte de verdade real sobre quem recebe
+  // WhatsApp (ver docs/notifications-architecture.md, Fase 15 do
+  // hardening do backend). Um toggle 'whatsapp' existiu aqui antes,
+  // escrevendo directamente em `user_settings.whatsapp` sem nunca ser
+  // lido por nada que decidisse um envio real nem exposto em nenhum
+  // ecrã -- removido para não voltar a existirem duas fontes de
+  // verdade para a mesma pergunta.
   void toggle(String key) {
     final uid = _uid;
     if (uid == null) return;
@@ -356,22 +364,18 @@ class NotificationSettings extends ChangeNotifier {
         appointmentReminders = !appointmentReminders;
       case 'promotions':
         promotions = !promotions;
-      case 'whatsapp':
-        whatsapp = !whatsapp;
     }
     notifyListeners();
     final column = switch (key) {
       'queueAlerts' => 'queue_alerts',
       'appointmentReminders' => 'appointment_reminders',
       'promotions' => 'promotions',
-      'whatsapp' => 'whatsapp',
       _ => key,
     };
     final newValue = switch (key) {
       'queueAlerts' => queueAlerts,
       'appointmentReminders' => appointmentReminders,
       'promotions' => promotions,
-      'whatsapp' => whatsapp,
       _ => true,
     };
     unawaited(supabaseClient.from('user_settings').update({column: newValue}).eq('user_id', uid));
