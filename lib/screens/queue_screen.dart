@@ -360,6 +360,11 @@ class _QueueScreenState extends State<QueueScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
                 child: Row(
+                  // Ver o mesmo ajuste em almost_screen.dart: `end` em vez
+                  // do `center` por omissão, para "Contactar" ficar ao
+                  // nível de "Fale com o apoio ao cliente." em vez de
+                  // flutuar entre o título e o subtítulo.
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
                       width: 36,
@@ -378,7 +383,16 @@ class _QueueScreenState extends State<QueueScreen> {
                         ],
                       ),
                     ),
-                    const Text('Contactar', style: TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Contactar',
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ],
                 ),
               ),
