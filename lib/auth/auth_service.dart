@@ -38,6 +38,34 @@ class AuthService {
     }
   }
 
+  /// Envia um código de verificação por SMS para `phone` (formato E.164,
+  /// ex.: "+244923456789"). A mesma chamada serve para conta nova e para
+  /// entrar numa já existente -- o Supabase decide sozinho ao confirmar o
+  /// código (`verifyPhoneOtp`), não há um passo de registo à parte.
+  Future<String?> sendPhoneOtp(String phone) async {
+    try {
+      await _client.auth.signInWithOtp(phone: phone);
+      return null;
+    } on AuthException catch (e) {
+      return _message(e);
+    } catch (_) {
+      return 'Não foi possível enviar o código. Tenta novamente.';
+    }
+  }
+
+  /// Confirma o código de 6 dígitos recebido por SMS -- sucesso cria a
+  /// sessão (conta nova ou já existente, o que se aplicar).
+  Future<String?> verifyPhoneOtp({required String phone, required String token}) async {
+    try {
+      await _client.auth.verifyOTP(type: OtpType.sms, phone: phone, token: token.trim());
+      return null;
+    } on AuthException catch (e) {
+      return _message(e);
+    } catch (_) {
+      return 'Não foi possível confirmar o código. Tenta novamente.';
+    }
+  }
+
   Future<String?> sendPasswordReset(String email) async {
     try {
       await _client.auth.resetPasswordForEmail(email.trim());
@@ -65,6 +93,18 @@ class AuthService {
     }
     if (msg.contains('email') && msg.contains('invalid')) {
       return 'Email inválido.';
+    }
+    if (code == 'invalid_phone_number' || (msg.contains('phone') && msg.contains('invalid'))) {
+      return 'Número de telefone inválido.';
+    }
+    if (code == 'otp_expired' || msg.contains('token has expired') || msg.contains('otp_expired')) {
+      return 'Código expirado. Pede um código novo.';
+    }
+    if (code == 'otp_disabled') {
+      return 'Não foi possível enviar o código -- serviço de SMS ainda não está configurado.';
+    }
+    if (msg.contains('token') && (msg.contains('invalid') || msg.contains('incorrect'))) {
+      return 'Código incorreto. Confirma os 6 dígitos e tenta novamente.';
     }
     if (code == 'over_request_rate_limit' || msg.contains('rate limit')) {
       return 'Demasiadas tentativas. Aguarda um pouco e tenta novamente.';
