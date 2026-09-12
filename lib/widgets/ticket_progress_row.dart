@@ -40,7 +40,13 @@ class TicketProgressRow extends StatelessWidget {
           children: [
             SizedBox(
               height: 18,
-              child: isActive ? Icon(Icons.arrow_drop_down, size: 20, color: activeColor) : null,
+              // `captionColor`, não `activeColor` -- esta seta fica sobre o
+              // fundo do cartão à volta (não sobre a bolha activa), tal como
+              // a legenda "A sua vez" logo abaixo. Usar `activeColor` aqui
+              // tornava a seta invisível sempre que o cartão à volta já
+              // tivesse essa mesma cor como fundo (ex.: cartão âmbar do
+              // AlmostScreen).
+              child: isActive ? Icon(Icons.arrow_drop_down, size: 20, color: captionColor) : null,
             ),
             Container(
               width: isActive ? 50 : 38,

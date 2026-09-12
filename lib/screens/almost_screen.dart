@@ -276,7 +276,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                     activeColor: AppColors.amber,
                     activeTextColor: Colors.white,
                     lineColor: Colors.white24,
-                    captionColor: AppColors.amber,
+                    captionColor: Colors.white,
                   ),
                 ],
               ],
@@ -498,7 +498,7 @@ class _AlmostStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(color: AppColors.amber, fontSize: 22, fontWeight: FontWeight.w800)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)),
       ],
