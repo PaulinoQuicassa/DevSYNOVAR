@@ -53,9 +53,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             _SettingSwitch(
               icon: Icons.chat_bubble_outline,
               title: 'Notificações por WhatsApp',
-              subtitle: 'Receber os alertas também por WhatsApp, além da app.',
+              subtitle: 'Receber os alertas também por WhatsApp, além da app -- em preparação, ainda não envia nada (a conta não tem um número de telefone associado).',
               value: notificationSettings.whatsapp,
               onChanged: (_) => notificationSettings.toggle('whatsapp'),
+              enabled: false,
             ),
             _SettingSwitch(
               icon: Icons.campaign_outlined,
