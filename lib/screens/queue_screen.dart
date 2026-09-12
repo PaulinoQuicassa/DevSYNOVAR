@@ -390,7 +390,7 @@ class _QueueScreenState extends State<QueueScreen> {
                         textAlign: TextAlign.right,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700),
+                        style: TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],

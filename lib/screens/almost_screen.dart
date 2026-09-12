@@ -470,7 +470,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                         textAlign: TextAlign.right,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700),
+                        style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
