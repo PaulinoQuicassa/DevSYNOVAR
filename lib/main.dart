@@ -26,18 +26,17 @@ String _redactString(String value) {
 }
 
 SentryEvent _redactEvent(SentryEvent event, Hint hint) {
-  var redacted = event;
+  // Mutação directa dos campos (não `copyWith`) -- `SentryEvent` já os
+  // expõe como propriedades atribuíveis, e `copyWith` está marcado
+  // como deprecated no SDK ("Assign values directly to the instance").
   final message = event.message;
   if (message != null) {
-    redacted = redacted.copyWith(message: SentryMessage(_redactString(message.formatted)));
+    event.message = SentryMessage(_redactString(message.formatted));
   }
-  final exceptions = event.exceptions;
-  if (exceptions != null) {
-    redacted = redacted.copyWith(
-      exceptions: exceptions.map((ex) => ex.copyWith(value: ex.value != null ? _redactString(ex.value!) : null)).toList(),
-    );
+  for (final ex in event.exceptions ?? const <SentryException>[]) {
+    if (ex.value != null) ex.value = _redactString(ex.value!);
   }
-  return redacted;
+  return event;
 }
 
 void main() async {
