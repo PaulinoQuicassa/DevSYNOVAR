@@ -98,7 +98,7 @@ class InstitutionCard extends StatelessWidget {
                                   ? const Stream<int>.empty()
                                   : ticket_service.subscribeQueueSize(location.institutionId!, location.branchId!),
                               builder: (context, snapshot) => StatusPill(
-                                label: snapshot.hasData ? '${snapshot.data} pessoas · ao vivo' : 'ao vivo',
+                                label: snapshot.hasData ? '${snapshot.data} pessoas na fila' : 'a carregar…',
                                 color: category.onDark,
                                 background: category.background,
                                 icon: Icons.podcasts,
@@ -106,7 +106,7 @@ class InstitutionCard extends StatelessWidget {
                             )
                           else
                             StatusPill(
-                              label: '${location.peopleInQueue} pessoas',
+                              label: '${location.peopleInQueue} pessoas na fila',
                               color: category.onDark,
                               background: category.background,
                             ),
@@ -115,7 +115,7 @@ class InstitutionCard extends StatelessWidget {
                             children: [
                               const Icon(Icons.access_time, size: 13, color: AppColors.textSecondary),
                               const SizedBox(width: 3),
-                              Text('${location.etaMinutes} min', style: AppTextStyles.bodySmall),
+                              Text('~${location.etaMinutes} min de espera', style: AppTextStyles.bodySmall),
                             ],
                           ),
                         ],

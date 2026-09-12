@@ -102,7 +102,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
                   children: [
                     const Icon(Icons.access_time, size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text('${widget.location.etaMinutes} min', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text('~${widget.location.etaMinutes} min de espera', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ],
