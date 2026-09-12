@@ -25,14 +25,19 @@ String _greetingPhrase() {
   return 'Boa noite,';
 }
 
-/// Nome apresentável a partir do email da conta com sessão iniciada —
-/// não há campo de nome no registo (`signup_screen.dart` só pede
-/// email/palavra-passe), por isso usamos a parte antes do "@".
+/// Nome apresentável a partir da conta com sessão iniciada -- não há
+/// campo de nome no registo (nem por telefone, nem pelo email/
+/// palavra-passe antigo), por isso usamos o que houver: a parte antes
+/// do "@" para contas de email, ou o próprio número para contas por
+/// telefone (a maioria, desde que o registo passou a ser por telefone).
 String _greetingName() {
-  final email = authService.currentUser?.email;
-  if (email == null || !email.contains('@')) return '';
+  final user = authService.currentUser;
+  final phone = user?.phone;
+  if (phone != null && phone.isNotEmpty) return '+$phone';
+  final email = user?.email;
+  if (email == null || !email.contains('@')) return 'Bem-vindo';
   final local = email.split('@').first.replaceAll(RegExp(r'[._]'), ' ').trim();
-  if (local.isEmpty) return '';
+  if (local.isEmpty) return 'Bem-vindo';
   return local.split(' ').map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1)).join(' ');
 }
 

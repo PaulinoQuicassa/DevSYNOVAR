@@ -8,6 +8,7 @@ import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
 import 'bank_logo.dart';
+import 'eta_label.dart';
 import 'status_pill.dart';
 
 class LocationCard extends StatelessWidget {
@@ -103,7 +104,7 @@ class LocationCard extends StatelessWidget {
                           StreamBuilder<int>(
                             stream: ticket_service.subscribeQueueSize(location.institutionId!, location.branchId!),
                             builder: (context, snapshot) => StatusPill(
-                              label: '${snapshot.data ?? 0} pessoas na fila',
+                              label: 'Ao vivo · ${snapshot.data ?? 0} pessoas na fila',
                               color: location.load.color,
                               background: location.load.bgColor,
                             ),
@@ -119,8 +120,10 @@ class LocationCard extends StatelessWidget {
                           children: [
                             const Icon(Icons.access_time, size: 13, color: AppColors.textMuted),
                             const SizedBox(width: 3),
-                            Text(
-                              '~${location.etaMinutes} min de espera',
+                            EtaLabel(
+                              institutionId: location.institutionId,
+                              branchId: location.branchId,
+                              fallbackMinutes: location.etaMinutes,
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                             ),
                           ],

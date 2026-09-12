@@ -8,6 +8,7 @@ import '../models/favorite.dart';
 import '../models/queue_location.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
+import 'eta_label.dart';
 import 'institution_logo.dart';
 import 'status_pill.dart';
 
@@ -98,7 +99,7 @@ class InstitutionCard extends StatelessWidget {
                                   ? const Stream<int>.empty()
                                   : ticket_service.subscribeQueueSize(location.institutionId!, location.branchId!),
                               builder: (context, snapshot) => StatusPill(
-                                label: snapshot.hasData ? '${snapshot.data} pessoas na fila' : 'a carregar…',
+                                label: snapshot.hasData ? 'Ao vivo · ${snapshot.data} pessoas na fila' : 'a carregar…',
                                 color: category.onDark,
                                 background: category.background,
                                 icon: Icons.podcasts,
@@ -115,7 +116,12 @@ class InstitutionCard extends StatelessWidget {
                             children: [
                               const Icon(Icons.access_time, size: 13, color: AppColors.textSecondary),
                               const SizedBox(width: 3),
-                              Text('~${location.etaMinutes} min de espera', style: AppTextStyles.bodySmall),
+                              EtaLabel(
+                                institutionId: location.institutionId,
+                                branchId: location.branchId,
+                                fallbackMinutes: location.etaMinutes,
+                                style: AppTextStyles.bodySmall,
+                              ),
                             ],
                           ),
                         ],

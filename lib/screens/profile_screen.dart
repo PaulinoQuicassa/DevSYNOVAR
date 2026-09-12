@@ -85,7 +85,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     Text(
-                      signedIn ? (user.email ?? '') : 'Entre para guardar favoritos, histórico e notificações.',
+                      signedIn
+                          ? (user.phone?.isNotEmpty == true ? '+${user.phone}' : (user.email ?? ''))
+                          : 'Entre para guardar favoritos, histórico e notificações.',
                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),

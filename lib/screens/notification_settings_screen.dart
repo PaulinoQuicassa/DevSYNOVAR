@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../app_stores.dart';
+import '../auth/auth_service.dart';
+import '../models/whatsapp_status.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/screen_header.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -11,10 +14,15 @@ class NotificationSettingsScreen extends StatefulWidget {
 }
 
 class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+  WhatsappStatus? _whatsapp;
+  bool _whatsappBusy = false;
+  String? _whatsappError;
+
   @override
   void initState() {
     super.initState();
     notificationSettings.addListener(_onChanged);
+    _loadWhatsappStatus();
   }
 
   @override
@@ -25,8 +33,42 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   void _onChanged() => setState(() {});
 
+  Future<void> _loadWhatsappStatus() async {
+    if (authService.currentUser == null) return;
+    try {
+      final status = await ticket_service.fetchWhatsappStatus();
+      if (mounted) setState(() => _whatsapp = status);
+    } catch (_) {
+      // Sem telefone verificado devolve tudo `false`/`null` pelo lado
+      // do servidor -- uma excepção aqui é só falha de rede/sessão;
+      // mantém-se em "a carregar" e a tentativa seguinte (reabrir o
+      // ecrã) resolve sozinha, sem alarmar com um erro por um detalhe
+      // secundário do ecrã de definições.
+    }
+  }
+
+  Future<void> _toggleWhatsapp(bool enabled) async {
+    setState(() {
+      _whatsappBusy = true;
+      _whatsappError = null;
+    });
+    try {
+      await ticket_service.setWhatsappNotifications(enabled);
+      final status = await ticket_service.fetchWhatsappStatus();
+      if (!mounted) return;
+      setState(() => _whatsapp = status);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _whatsappError = 'Não foi possível actualizar. Tenta novamente.');
+    } finally {
+      if (mounted) setState(() => _whatsappBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final whatsapp = _whatsapp;
+    final phoneVerified = whatsapp?.phoneVerified ?? false;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -53,11 +95,23 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             _SettingSwitch(
               icon: Icons.chat_bubble_outline,
               title: 'Notificações por WhatsApp',
-              subtitle: 'Receber os alertas também por WhatsApp, além da app -- em preparação, ainda não envia nada (a conta não tem um número de telefone associado).',
-              value: notificationSettings.whatsapp,
-              onChanged: (_) => notificationSettings.toggle('whatsapp'),
-              enabled: false,
+              subtitle: phoneVerified
+                  ? 'Receber os alertas também por WhatsApp, no número verificado desta conta.'
+                  : 'Precisa de entrar com um número de telefone verificado para activar (contas antigas por email não têm número associado).',
+              value: whatsapp?.notificationsEnabled ?? false,
+              onChanged: (v) => _toggleWhatsapp(v),
+              enabled: phoneVerified && !_whatsappBusy,
+              badge: phoneVerified ? null : 'Precisa de telefone verificado',
             ),
+            if (whatsapp != null) ...[
+              const SizedBox(height: 8),
+              _WhatsappStatusCard(status: whatsapp),
+            ],
+            if (_whatsappError != null) ...[
+              const SizedBox(height: 8),
+              Text(_whatsappError!, style: const TextStyle(fontSize: 12, color: AppColors.critical)),
+            ],
+            const SizedBox(height: 12),
             _SettingSwitch(
               icon: Icons.campaign_outlined,
               title: 'Novidades e promoções',
@@ -72,6 +126,48 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 }
 
+/// Estado real e verificável em vez de uma simples confirmação --
+/// exactamente o que foi pedido: nunca mostrar "notificação enviada"
+/// (ou "activadas") sem confirmar o estado a partir do servidor.
+class _WhatsappStatusCard extends StatelessWidget {
+  final WhatsappStatus status;
+
+  const _WhatsappStatusCard({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    if (status.phone == null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(14)),
+        child: const Text(
+          'Esta conta não tem um número de telefone associado.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: [
+          Text('📱 ${status.phone}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          Text(
+            status.phoneVerified ? '✅ Número verificado' : '❌ Número não verificado',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+          ),
+          Text(
+            status.notificationsEnabled ? '🔔 Notificações WhatsApp — ACTIVADAS' : '🔕 Notificações WhatsApp — desactivadas',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SettingSwitch extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -79,6 +175,7 @@ class _SettingSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final bool enabled;
+  final String? badge;
 
   const _SettingSwitch({
     required this.icon,
@@ -87,6 +184,7 @@ class _SettingSwitch extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.badge = 'Brevemente',
   });
 
   @override
@@ -115,20 +213,22 @@ class _SettingSwitch extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.5,
-                        color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                        ),
                       ),
                     ),
-                    if (!enabled) ...[
+                    if (!enabled && badge != null) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(999)),
-                        child: const Text('Brevemente', style: TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.w700)),
+                        child: Text(badge!, style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ],

@@ -5,6 +5,7 @@ import 'models/live_ticket.dart';
 import 'models/my_ticket.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
+import 'models/whatsapp_status.dart';
 import 'supabase_client.dart';
 
 /// Camada de acesso ao ciclo de vida real de uma senha -- tabela `tickets`
@@ -257,6 +258,28 @@ Stream<int> subscribeQueueSize(String institutionId, String branchId) {
   );
 }
 
+/// Espera estimada real (minutos), calculada no servidor a partir do
+/// histórico de hoje desta filial (`branch_wait_stats`, já existente --
+/// usado até agora só pelo painel de TV da equipa). Susbtitui
+/// `QueueLocation.etaMinutes`/`ServiceItem.etaMinutes` (fixos no
+/// catálogo) sempre que a localização for real. `null` enquanto não há
+/// amostra suficiente (agência nova/dia sem senhas ainda) -- quem
+/// chama deve cair para o valor fixo do catálogo nesse caso, nunca
+/// mostrar "0 min".
+Stream<int?> subscribeEtaMinutes(String institutionId, String branchId) {
+  return _pollValue<int?>(
+    interval: const Duration(seconds: 30),
+    fetch: () async {
+      final avg = await supabaseClient.rpc('branch_wait_stats', params: {
+        'p_institution_id': institutionId,
+        'p_branch_id': branchId,
+      });
+      if (avg == null) return null;
+      return (avg as num).round();
+    },
+  );
+}
+
 /// Nomes de serviço de todas as senhas em espera agora -- usado para
 /// contar, por serviço, quantas pessoas estão à espera. Reconstrói a
 /// mesma forma (uma entrada por senha) a partir do agregado
@@ -433,4 +456,35 @@ Future<void> submitRating({
     'aspect_organizacao': aspects['organizacao'] ?? 0,
     'aspect_instalacoes': aspects['instalacoes'] ?? 0,
   });
+}
+
+/// Estado real das notificações WhatsApp da conta -- lê sempre do
+/// servidor (RPC `whatsapp_notifications_status`), nunca assume a
+/// partir só da preferência local. Ver docs/phone-auth.md.
+Future<WhatsappStatus> fetchWhatsappStatus() async {
+  final rows = await supabaseClient.rpc('whatsapp_notifications_status') as List;
+  if (rows.isEmpty) return WhatsappStatus.none;
+  final row = rows.first as Map<String, dynamic>;
+  return WhatsappStatus(
+    phone: row['phone'] as String?,
+    phoneVerified: row['phone_verified'] as bool? ?? false,
+    notificationsEnabled: row['notifications_enabled'] as bool? ?? false,
+  );
+}
+
+/// Activa/desactiva as notificações WhatsApp de verdade -- associa (ou
+/// remove) o número já verificado da conta em `whatsapp_contacts`, a
+/// mesma tabela que `whatsapp-notifier` usa para saber a quem mandar
+/// mensagem. Atira excepção se a conta ainda não tiver telefone
+/// verificado (RPC recusa no servidor) -- quem chama deve mostrar isso,
+/// nunca assumir sucesso silenciosamente.
+Future<void> setWhatsappNotifications(bool enabled) {
+  return supabaseClient.rpc('set_whatsapp_notifications', params: {'p_enabled': enabled});
+}
+
+/// Regista, para auditoria, o momento em que um número de telefone
+/// ficou verificado -- chamar logo a seguir a `verifyPhoneOtp` ter
+/// sucesso (ver `auth/auth_service.dart`).
+Future<void> recordPhoneVerifiedEvent() {
+  return supabaseClient.rpc('record_phone_verified_event');
 }
