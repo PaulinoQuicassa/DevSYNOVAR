@@ -54934,7 +54934,7 @@ m(){$.jz().K(this.gZj())
 this.aE()},
 aso(){return this.S(new A.aL8())},
 J(a){var s=null,r=$.jz()
-return A.lb(s,B.ak,A.eO(!0,A.fl(A.b([B.a58,B.aM,new A.wY(B.f0,"Alertas de fila","Avisos quando estiver quase na sua vez ou for chamado.",r.a,new A.aL9(),!0,s),new A.wY(B.nF,"Lembretes de agendamento","Avisos antes de um agendamento marcado -- em prepara\xe7\xe3o, ainda n\xe3o chega a avisar ningu\xe9m.",r.b,new A.aLa(),!1,s),new A.wY(B.nC,"Notifica\xe7\xf5es por WhatsApp","Receber os alertas tamb\xe9m por WhatsApp, al\xe9m da app.",r.d,new A.aLb(),!0,s),new A.wY(B.u6,"Novidades e promo\xe7\xf5es","Comunica\xe7\xf5es sobre novos servi\xe7os e parceiros.",r.c,new A.aLc(),!0,s)],t.p),B.e4,B.H),B.Y,!0),s)}}
+return A.lb(s,B.ak,A.eO(!0,A.fl(A.b([B.a58,B.aM,new A.wY(B.f0,"Alertas de fila","Avisos quando estiver quase na sua vez ou for chamado.",r.a,new A.aL9(),!0,s),new A.wY(B.nF,"Lembretes de agendamento","Avisos antes de um agendamento marcado -- em prepara\xe7\xe3o, ainda n\xe3o chega a avisar ningu\xe9m.",r.b,new A.aLa(),!1,s),new A.wY(B.nC,"Notifica\xe7\xf5es por WhatsApp","Receber os alertas tamb\xe9m por WhatsApp, al\xe9m da app -- em prepara\xe7\xe3o, ainda n\xe3o envia nada (a conta n\xe3o tem um n\xfamero de telefone associado).",r.d,new A.aLb(),!1,s),new A.wY(B.u6,"Novidades e promo\xe7\xf5es","Comunica\xe7\xf5es sobre novos servi\xe7os e parceiros.",r.c,new A.aLc(),!0,s)],t.p),B.e4,B.H),B.Y,!0),s)}}
 A.aL8.prototype={
 $0(){},
 $S:0}
