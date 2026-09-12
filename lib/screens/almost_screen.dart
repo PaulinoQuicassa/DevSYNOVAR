@@ -438,6 +438,13 @@ class _AlmostScreenState extends State<AlmostScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
                 child: Row(
+                  // `end`, não o `center` por omissão -- com um rótulo de
+                  // uma linha ao lado de um bloco de duas linhas (título +
+                  // subtítulo), centrar deixava "Contactar suporte" a
+                  // flutuar entre as duas, sem se alinhar com nenhuma.
+                  // Alinhado ao fundo, fica ao nível de "Fale com a nossa
+                  // equipa de suporte."
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Container(
                       width: 36,
@@ -456,7 +463,16 @@ class _AlmostScreenState extends State<AlmostScreen> {
                         ],
                       ),
                     ),
-                    const Text('Contactar suporte', style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    const Flexible(
+                      child: Text(
+                        'Contactar suporte',
+                        textAlign: TextAlign.right,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -498,7 +514,13 @@ class _AlmostStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, height: 1.1),
+        ),
         const SizedBox(height: 4),
         Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.25)),
       ],
