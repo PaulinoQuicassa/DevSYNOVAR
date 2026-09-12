@@ -1,5 +1,21 @@
+import 'dart:async';
+
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+
+/// Reporta uma falha de autenticação com só a classificação do erro
+/// (nunca o telefone/email/password/código em si) -- suficiente para
+/// detectar um pico de falhas de login/OTP sem guardar quem tentou
+/// (Fase 16: "monitorizar autenticação; OTP").
+void _reportAuthError(String flow, Object error, StackTrace stackTrace) {
+  final code = error is AuthException ? error.code : null;
+  unawaited(Sentry.captureException(
+    error,
+    stackTrace: stackTrace,
+    withScope: (scope) => scope.setContexts('auth', {'flow': flow, 'errorCode': code}),
+  ));
+}
 
 /// Thin wrapper around Supabase Auth — the only place in the app that
 /// talks to it directly, so screens/tests never depend on Supabase types
@@ -20,9 +36,11 @@ class AuthService {
     try {
       await _client.auth.signUp(email: email.trim(), password: password);
       return null;
-    } on AuthException catch (e) {
+    } on AuthException catch (e, st) {
+      _reportAuthError('sign_up', e, st);
       return _message(e);
-    } catch (_) {
+    } catch (e, st) {
+      _reportAuthError('sign_up', e, st);
       return 'Não foi possível criar a conta. Tenta novamente.';
     }
   }
@@ -31,9 +49,11 @@ class AuthService {
     try {
       await _client.auth.signInWithPassword(email: email.trim(), password: password);
       return null;
-    } on AuthException catch (e) {
+    } on AuthException catch (e, st) {
+      _reportAuthError('sign_in', e, st);
       return _message(e);
-    } catch (_) {
+    } catch (e, st) {
+      _reportAuthError('sign_in', e, st);
       return 'Não foi possível entrar. Tenta novamente.';
     }
   }
@@ -46,9 +66,11 @@ class AuthService {
     try {
       await _client.auth.signInWithOtp(phone: phone);
       return null;
-    } on AuthException catch (e) {
+    } on AuthException catch (e, st) {
+      _reportAuthError('send_otp', e, st);
       return _message(e);
-    } catch (_) {
+    } catch (e, st) {
+      _reportAuthError('send_otp', e, st);
       return 'Não foi possível enviar o código. Tenta novamente.';
     }
   }
@@ -59,9 +81,11 @@ class AuthService {
     try {
       await _client.auth.verifyOTP(type: OtpType.sms, phone: phone, token: token.trim());
       return null;
-    } on AuthException catch (e) {
+    } on AuthException catch (e, st) {
+      _reportAuthError('verify_otp', e, st);
       return _message(e);
-    } catch (_) {
+    } catch (e, st) {
+      _reportAuthError('verify_otp', e, st);
       return 'Não foi possível confirmar o código. Tenta novamente.';
     }
   }
