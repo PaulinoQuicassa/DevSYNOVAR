@@ -369,7 +369,12 @@ class _AlmostScreenState extends State<AlmostScreen> {
                     borderRadius: BorderRadius.circular(14),
                     onTap: _showQueueDetails,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      // Mesmo padding vertical (12) da caixa "Alertas" ao
+                      // lado -- valores diferentes (era 14 aqui, 10 na
+                      // outra) faziam as duas caixas ficarem com alturas
+                      // diferentes e, por omissão (Row centra ao alinhar),
+                      // pareciam desalinhadas uma da outra.
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(14),
@@ -392,7 +397,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                 child: AnimatedBuilder(
                   animation: notificationSettings,
                   builder: (context, _) => Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(14),

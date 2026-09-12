@@ -78,7 +78,7 @@ class ServiceCard extends StatelessWidget {
                   const SizedBox(width: 3),
                   Flexible(
                     child: Text(
-                      '${service.etaMinutes} min',
+                      '${service.etaMinutes} min de espera',
                       style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                       overflow: TextOverflow.ellipsis,
                     ),

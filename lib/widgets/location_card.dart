@@ -120,7 +120,7 @@ class LocationCard extends StatelessWidget {
                             const Icon(Icons.access_time, size: 13, color: AppColors.textMuted),
                             const SizedBox(width: 3),
                             Text(
-                              '${location.etaMinutes} min',
+                              '~${location.etaMinutes} min de espera',
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                             ),
                           ],

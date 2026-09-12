@@ -31,7 +31,7 @@ class WaitTimeDisplay extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 2),
-        Text('$peopleInQueue pessoas', style: AppTextStyles.caption),
+        Text('de espera · $peopleInQueue pessoas', style: AppTextStyles.caption),
       ],
     );
   }
