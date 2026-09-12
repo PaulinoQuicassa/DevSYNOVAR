@@ -36,12 +36,14 @@ class _AlmostScreenState extends State<AlmostScreen> {
   LiveTicket? _ticket;
   LiveBoardEntry? _liveBoardEntry;
   int _peopleAhead = 0;
+  int? _realEtaMinutes;
   bool _navigatedToCalled = false;
   bool _connectionLost = false;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
   StreamSubscription<LiveBoardEntry?>? _boardSub;
   StreamSubscription<int>? _aheadSub;
+  StreamSubscription<int?>? _etaSub;
 
   @override
   void initState() {
@@ -51,6 +53,12 @@ class _AlmostScreenState extends State<AlmostScreen> {
     _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate, onError: _onStreamError);
     _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen((entry) {
       if (mounted) setState(() => _liveBoardEntry = entry);
+    }, onError: _onStreamError);
+    // Espera real (média de hoje nesta filial) -- ver o mesmo em
+    // queue_screen.dart. Só substitui a estimativa por posição quando
+    // já há amostra.
+    _etaSub = ticket_service.subscribeEtaMinutes(ref.institutionId, ref.branchId).listen((minutes) {
+      if (mounted) setState(() => _realEtaMinutes = minutes);
     }, onError: _onStreamError);
   }
 
@@ -99,6 +107,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
     _ticketSub?.cancel();
     _boardSub?.cancel();
     _aheadSub?.cancel();
+    _etaSub?.cancel();
     super.dispose();
   }
 
@@ -198,7 +207,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
   Widget build(BuildContext context) {
     final wired = widget.liveTicket != null;
     final peopleAheadText = wired ? '$_peopleAhead' : '2';
-    final etaText = wired ? '${_peopleAhead * 5} min' : '5 min';
+    final etaText = wired ? '${_realEtaMinutes ?? _peopleAhead * 5} min' : '5 min';
     // '—' sozinho parecia um erro/ausência de dados. Numa agência nova,
     // sem histórico, é perfeitamente normal ainda ninguém ter sido
     // chamado -- deixar isso claro em vez de mostrar só um traço.

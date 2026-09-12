@@ -35,12 +35,14 @@ class _QueueScreenState extends State<QueueScreen> {
   LiveTicket? _ticket;
   LiveBoardEntry? _liveBoardEntry;
   int _peopleAhead = 0;
+  int? _realEtaMinutes;
   bool _navigatedToCalled = false;
   bool _connectionLost = false;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
   StreamSubscription<LiveBoardEntry?>? _boardSub;
   StreamSubscription<int>? _aheadSub;
+  StreamSubscription<int?>? _etaSub;
 
   @override
   void initState() {
@@ -50,6 +52,13 @@ class _QueueScreenState extends State<QueueScreen> {
     _ticketSub = ticket_service.subscribeTicket(ref).listen(_onTicketUpdate, onError: _onStreamError);
     _boardSub = ticket_service.subscribeLiveBoardCurrent(ref.institutionId, ref.branchId).listen((entry) {
       if (mounted) setState(() => _liveBoardEntry = entry);
+    }, onError: _onStreamError);
+    // Espera real (média de hoje nesta filial) -- só substitui a
+    // estimativa por posição (`_peopleAhead * 5`) quando já há amostra;
+    // sem isso continuamos a usar essa estimativa como reserva (ver
+    // `etaText` no build()).
+    _etaSub = ticket_service.subscribeEtaMinutes(ref.institutionId, ref.branchId).listen((minutes) {
+      if (mounted) setState(() => _realEtaMinutes = minutes);
     }, onError: _onStreamError);
   }
 
@@ -98,6 +107,7 @@ class _QueueScreenState extends State<QueueScreen> {
     _ticketSub?.cancel();
     _boardSub?.cancel();
     _aheadSub?.cancel();
+    _etaSub?.cancel();
     super.dispose();
   }
 
@@ -159,7 +169,7 @@ class _QueueScreenState extends State<QueueScreen> {
     final lastCalledCode = wired ? (_liveBoardEntry?.code ?? 'Ainda ninguém') : MockData.lastCalledTicket;
     final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
     final peopleAheadText = wired ? '$_peopleAhead' : '4';
-    final etaText = wired ? '${_peopleAhead * 5} min' : '12 min';
+    final etaText = wired ? '${_realEtaMinutes ?? _peopleAhead * 5} min' : '12 min';
 
     return FlowScaffold(
       body: ListView(

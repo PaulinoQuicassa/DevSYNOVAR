@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../ticket_service.dart' as ticket_service;
 import '../widgets/gradient_button.dart';
 import 'email_login_screen.dart';
 
@@ -83,6 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
+    // Só para auditoria (ver docs/phone-auth.md) -- nunca bloqueia o
+    // login se falhar por algum motivo (rede, etc.), por isso sem
+    // await no fluxo principal nem tratamento de erro visível.
+    unawaited(ticket_service.recordPhoneVerifiedEvent());
     // Empurrada contextualmente (ver `requireAuth`) -- devolve o sucesso
     // a quem chamou. No-op se esta instância for a única rota (não há o
     // que fechar).

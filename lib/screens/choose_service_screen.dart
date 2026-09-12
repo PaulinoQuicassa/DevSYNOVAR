@@ -5,6 +5,7 @@ import '../models/queue_location.dart';
 import '../models/service_item.dart';
 import '../theme/app_theme.dart';
 import '../ticket_service.dart' as ticket_service;
+import '../widgets/eta_label.dart';
 import '../widgets/flow_scaffold.dart';
 import '../widgets/info_banner.dart';
 import '../widgets/location_summary_card.dart';
@@ -102,7 +103,12 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
                   children: [
                     const Icon(Icons.access_time, size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text('~${widget.location.etaMinutes} min de espera', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    EtaLabel(
+                      institutionId: widget.location.institutionId,
+                      branchId: widget.location.branchId,
+                      fallbackMinutes: widget.location.etaMinutes,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
                   ],
                 ),
               ],
