@@ -384,7 +384,7 @@ class _QueueScreenState extends State<QueueScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    const Flexible(
                       child: Text(
                         'Contactar',
                         textAlign: TextAlign.right,

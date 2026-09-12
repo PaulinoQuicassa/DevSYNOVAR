@@ -464,7 +464,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    const Flexible(
                       child: Text(
                         'Contactar suporte',
                         textAlign: TextAlign.right,
