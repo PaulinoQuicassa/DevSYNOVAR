@@ -124,7 +124,7 @@ class AuthService {
     if (code == 'otp_expired' || msg.contains('token has expired') || msg.contains('otp_expired')) {
       return 'Código expirado. Pede um código novo.';
     }
-    if (code == 'otp_disabled') {
+    if (code == 'otp_disabled' || code == 'phone_provider_disabled') {
       return 'Não foi possível enviar o código -- serviço de SMS ainda não está configurado.';
     }
     if (msg.contains('token') && (msg.contains('invalid') || msg.contains('incorrect'))) {
