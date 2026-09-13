@@ -59,7 +59,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       setState(() => _whatsapp = status);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _whatsappError = 'Não foi possível actualizar. Tenta novamente.');
+      setState(() => _whatsappError = 'Não foi possível actualizar. Tente novamente.');
     } finally {
       if (mounted) setState(() => _whatsappBusy = false);
     }

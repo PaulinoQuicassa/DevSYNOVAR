@@ -219,8 +219,8 @@ class _AlmostScreenState extends State<AlmostScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         children: [
           const ScreenHeader(
-            title: 'Está quase!',
-            subtitle: 'Falta pouco para ser a sua vez.',
+            title: 'Está quase na sua vez',
+            subtitle: 'Prepare-se. Falta pouco para ser chamado.',
             trailingIcon: Icons.notifications_none_rounded,
             trailingHasDot: true,
           ),
@@ -250,7 +250,7 @@ class _AlmostScreenState extends State<AlmostScreen> {
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
-                        'Está quase a sua vez!',
+                        'Está quase na sua vez',
                         style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -264,8 +264,8 @@ class _AlmostScreenState extends State<AlmostScreen> {
                 const SizedBox(height: 22),
                 Row(
                   children: [
-                    Expanded(child: _AlmostStat(value: peopleAheadText, label: 'pessoas\nà sua frente')),
-                    Expanded(child: _AlmostStat(value: etaText, label: 'tempo\nestimado')),
+                    Expanded(child: _AlmostStat(value: peopleAheadText, label: 'pessoas\nà frente')),
+                    Expanded(child: _AlmostStat(value: etaText, label: 'espera\nestimada')),
                     Expanded(
                       child: wired
                           ? _AlmostStat(value: widget.service.name, label: 'Serviço')

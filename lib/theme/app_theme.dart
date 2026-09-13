@@ -54,6 +54,9 @@ class AppColors {
   static const warningBg = amberBg;
   static const critical = Color(0xFFDC2626);
   static const criticalBg = Color(0xFFFEE2E2);
+  static const info = Color(0xFF2563EB);
+  static const infoBg = Color(0xFFE8F0FE);
+  static const surfaceElevated = Color(0xFFFFFFFF);
 
   // Neutros.
   static const textPrimary = Color(0xFF2C2C2A);
@@ -88,6 +91,8 @@ class AppSpacing {
   static const xl = 20.0;
   static const xxl = 24.0;
   static const xxxl = 32.0;
+  static const huge = 48.0;
+  static const hero = 64.0;
 }
 
 class AppRadius {

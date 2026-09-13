@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (nearestTwo.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Sem instituições nesta categoria.', style: AppTextStyles.bodySmall),
+              child: Text('Não encontrámos nenhuma instituição nesta categoria.', style: AppTextStyles.bodySmall),
             )
           else
             ...nearestTwo.map(
@@ -323,7 +323,7 @@ class _SearchNavBar extends StatelessWidget {
                 Icon(Icons.search, size: 18, color: AppColors.textSecondary),
                 SizedBox(width: 10),
                 Expanded(
-                  child: Text('o que precisa de tratar?', style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+                  child: Text('Onde quer ser atendido?', style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
                 ),
                 Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
               ],

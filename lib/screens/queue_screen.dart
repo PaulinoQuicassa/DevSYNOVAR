@@ -37,6 +37,8 @@ class _QueueScreenState extends State<QueueScreen> {
   int _peopleAhead = 0;
   int? _realEtaMinutes;
   bool _navigatedToCalled = false;
+  bool _openedAlmost = false;
+  bool _aheadReady = false;
   bool _connectionLost = false;
 
   StreamSubscription<LiveTicket?>? _ticketSub;
@@ -75,13 +77,37 @@ class _QueueScreenState extends State<QueueScreen> {
     });
     if (!wasSubscribedToAhead && ticket?.createdAt != null) {
       _aheadSub = ticket_service.subscribeWaitingAhead(widget.liveTicket!, ticket!.createdAt!).listen((count) {
-        if (mounted) setState(() => _peopleAhead = count);
+        if (!mounted) return;
+        setState(() {
+          _peopleAhead = count;
+          _aheadReady = true;
+        });
+        _maybeOpenAlmost();
       }, onError: _onStreamError);
     }
     if (ticket?.status == TicketStatus.serving && !_navigatedToCalled) {
       _navigatedToCalled = true;
       _goToCalled(ticket!);
+    } else {
+      _maybeOpenAlmost();
     }
+  }
+
+  void _maybeOpenAlmost() {
+    if (!mounted || widget.liveTicket == null) return;
+    if (!_aheadReady || _openedAlmost || _navigatedToCalled) return;
+    if (_ticket?.status != TicketStatus.waiting) return;
+    if (_peopleAhead > 2) return;
+    _openedAlmost = true;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AlmostScreen(
+          location: widget.location,
+          service: widget.service,
+          liveTicket: widget.liveTicket,
+        ),
+      ),
+    );
   }
 
   Future<void> _goToCalled(LiveTicket ticket) async {
@@ -168,15 +194,18 @@ class _QueueScreenState extends State<QueueScreen> {
     // chamado -- deixar isso claro em vez de mostrar só um traço.
     final lastCalledCode = wired ? (_liveBoardEntry?.code ?? 'Ainda ninguém') : MockData.lastCalledTicket;
     final servingCounterLabel = wired ? (_liveBoardEntry?.counterLabel ?? '—') : 'Balcão ${MockData.counterNumber}';
-    final peopleAheadText = wired ? '$_peopleAhead' : '4';
-    final etaText = wired ? '${_realEtaMinutes ?? _peopleAhead * 5} min' : '12 min';
+    final peopleAhead = wired ? _peopleAhead : 4;
+    final position = peopleAhead + 1;
+    final etaMinutes = wired ? (_realEtaMinutes ?? _peopleAhead * 5) : 12;
+    final peopleWord = peopleAhead == 1 ? 'pessoa' : 'pessoas';
+    final queueWord = position == 1 ? 'pessoa' : 'pessoas';
 
     return FlowScaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         children: [
           ScreenHeader(
-            title: 'A sua senha',
+            title: 'A sua fila',
             trailingIcon: Icons.help_outline,
             onTrailing: () => _showHelp(context),
           ),
@@ -194,44 +223,49 @@ class _QueueScreenState extends State<QueueScreen> {
             ),
             child: Column(
               children: [
-                const Text('A sua senha é', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
+                const Text('A sua senha', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
                 Text(
                   displayCode,
-                  style: const TextStyle(color: Colors.white, fontSize: 68, fontWeight: FontWeight.w800, height: 1.05),
+                  style: AppTextStyles.ticketCode(fontSize: 64, color: Colors.white),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: const Text(
+                    'A aguardar atendimento',
+                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(child: _HeroStat(value: '$position.º', label: 'posição')),
+                    Container(width: 1, height: 44, color: Colors.white24),
+                    Expanded(child: _HeroStat(value: '$peopleAhead', label: '$peopleWord\nà frente')),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+                  child: Column(
                     children: [
-                      const Icon(Icons.access_time, size: 15, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Tempo estimado: $etaText',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700),
-                        ),
+                      Text(
+                        'Espera estimada · $etaMinutes min',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ao vivo · $position $queueWord na fila',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _HeroStat(icon: Icons.groups_outlined, value: peopleAheadText, label: 'pessoas\nà sua frente'),
-                    ),
-                    Container(width: 1, height: 44, color: Colors.white24),
-                    Expanded(
-                      child: wired
-                          ? _HeroStat(icon: Icons.category_outlined, value: widget.service.name, label: 'Serviço')
-                          : const _HeroStat(icon: Icons.inbox_outlined, value: MockData.counterNumber, label: 'Balcão'),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 20),
                 Container(
@@ -415,32 +449,21 @@ class _QueueScreenState extends State<QueueScreen> {
 }
 
 class _HeroStat extends StatelessWidget {
-  final IconData icon;
   final String value;
   final String label;
 
-  const _HeroStat({required this.icon, required this.value, required this.label});
+  const _HeroStat({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Icon(icon, color: Colors.white, size: 16),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                value,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, height: 1),
-              ),
-            ),
-          ],
+        Text(
+          value,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, height: 1),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           label,
           textAlign: TextAlign.center,

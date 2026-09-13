@@ -94,7 +94,7 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 StatusPill(
-                  label: '${_waitingServiceNames?.length ?? widget.location.peopleInQueue} na fila geral',
+                  label: 'Ao vivo · ${_waitingServiceNames?.length ?? widget.location.peopleInQueue} na fila',
                   color: widget.location.load.color,
                   background: widget.location.load.bgColor,
                 ),
@@ -161,7 +161,11 @@ class _ChooseServiceScreenState extends State<ChooseServiceScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: Center(
-                child: Text('Sem serviços para "$_query"', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                child: Text(
+                  'Não encontrámos nenhum serviço com “$_query”. Tente outro nome.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
               ),
             )
           else

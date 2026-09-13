@@ -114,11 +114,18 @@ class _ServiceConfirmScreenState extends State<ServiceConfirmScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(widget.location.name, style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(widget.service.name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
                 const Text('Espera estimada', style: TextStyle(color: Colors.white70, fontSize: 12.5, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text('${widget.service.etaMinutes} min', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text('${widget.service.peopleInQueue} pessoas na fila', style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
+                Text(
+                  'Ao vivo · ${widget.service.peopleInQueue} ${widget.service.peopleInQueue == 1 ? 'pessoa' : 'pessoas'} na fila',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                ),
                 const SizedBox(height: 14),
                 ScoreBadge(score: score),
               ],

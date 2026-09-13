@@ -3,8 +3,8 @@ import 'data/mock_data.dart';
 import 'models/live_ticket.dart';
 import 'models/queue_location.dart';
 import 'models/service_item.dart';
-import 'screens/almost_screen.dart';
 import 'screens/called_screen.dart';
+import 'screens/queue_screen.dart';
 import 'ticket_service.dart' as ticket_service;
 
 /// Reabre o ecrã ao vivo de uma senha a partir só do `LiveTicketRef` +
@@ -47,7 +47,7 @@ Future<void> openLiveTicketScreen(NavigatorState nav, LiveTicketRef ref, LiveTic
     ));
   } else {
     nav.push(MaterialPageRoute(
-      builder: (_) => AlmostScreen(location: location!, service: service!, liveTicket: ref),
+      builder: (_) => QueueScreen(location: location!, service: service!, liveTicket: ref),
     ));
   }
 }

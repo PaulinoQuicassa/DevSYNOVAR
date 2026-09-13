@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text('Fila Certa', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
           const SizedBox(height: 6),
           Text(
-            widget.reason ?? 'Entra com o teu número de telemóvel para veres os teus agendamentos e histórico em qualquer aparelho.',
+            widget.reason ?? 'Entre com o seu número de telemóvel para ver os seus atendimentos em qualquer aparelho.',
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
             textAlign: TextAlign.center,
           ),
@@ -175,12 +175,12 @@ class _LoginScreenState extends State<LoginScreen> {
               prefixIcon: Icon(Icons.phone_iphone),
               hintText: '9XX XXX XXX',
             ),
-            validator: (v) => _e164From(v ?? '') == null ? 'Escreve os 9 dígitos do número.' : null,
+            validator: (v) => _e164From(v ?? '') == null ? 'Escreva os 9 dígitos do número.' : null,
             onFieldSubmitted: (_) => _submitting ? null : _sendCode(),
           ),
           const SizedBox(height: 20),
           GradientButton(
-            label: _submitting ? 'A enviar código…' : 'Enviar código',
+            label: _submitting ? 'A enviar código…' : 'Receber código',
             onTap: _submitting ? null : _sendCode,
           ),
           const SizedBox(height: 20),
@@ -215,11 +215,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Icon(Icons.sms_outlined, color: Colors.white, size: 34),
           ),
           const SizedBox(height: 24),
-          const Text('Confirma o código', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
+          const Text('Código de verificação', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
           const SizedBox(height: 6),
-          Text(
-            'Enviámos um código de 6 dígitos por SMS para $_e164Phone.',
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+          const Text(
+            'Enviámos um código para o seu número.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -236,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
           GradientButton(
-            label: _submitting ? 'A confirmar…' : 'Confirmar',
+            label: _submitting ? 'A entrar…' : 'Entrar',
             onTap: _submitting ? null : _verifyCode,
           ),
           const SizedBox(height: 12),

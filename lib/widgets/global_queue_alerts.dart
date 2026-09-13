@@ -111,7 +111,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
     }
 
     if (ticket.status == TicketStatus.serving && previousStatus != TicketStatus.serving) {
-      _showAlert(watch, 'É a sua vez!', '${ticket.service} — dirija-se ao balcão indicado.');
+      _showAlert(watch, 'É a sua vez', '${ticket.service} — dirija-se ao balcão indicado.');
     } else if (ticket.status == TicketStatus.waiting && previousStatus == TicketStatus.serving) {
       _showAlert(watch, 'A sua senha foi transferida', '${ticket.service} voltou à fila de espera.');
     } else if (ticket.status == TicketStatus.done && previousStatus != TicketStatus.done) {
@@ -133,7 +133,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
     if (ahead == 0 && !watch.announcedNext && watch.lastStatus == TicketStatus.waiting) {
       watch.announcedNext = true;
       final serviceName = watch.lastTicket?.service ?? '';
-      _showAlert(watch, 'Serás o próximo!', '$serviceName — prepare-se, a sua vez está a chegar.');
+      _showAlert(watch, 'Está quase na sua vez', '$serviceName — prepare-se, a sua vez está a chegar.');
     }
   }
 
@@ -153,7 +153,7 @@ class _GlobalQueueAlertsState extends State<GlobalQueueAlerts> {
           entry.updatedAt != watch.lastBoardUpdatedAt;
       watch.lastBoardUpdatedAt = entry.updatedAt ?? watch.lastBoardUpdatedAt;
       if (isRecall) {
-        _showAlert(watch, 'Estão a chamar-te novamente!', '${watch.lastTicket?.service ?? ''} — dirija-se ao balcão.');
+        _showAlert(watch, 'É a sua vez', '${watch.lastTicket?.service ?? ''} — dirija-se ao balcão. Estão a chamá-lo novamente.');
       }
     });
   }
