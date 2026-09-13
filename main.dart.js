@@ -53612,7 +53612,7 @@ if(p!=="invalid_phone_number")r=B.c.n(s,"phone")&&B.c.n(s,q)
 else r=!0
 if(r)return"N\xfamero de telefone inv\xe1lido."
 if(p==="otp_expired"||B.c.n(s,"token has expired")||B.c.n(s,"otp_expired"))return"C\xf3digo expirado. Pede um c\xf3digo novo."
-if(p==="otp_disabled")return"N\xe3o foi poss\xedvel enviar o c\xf3digo -- servi\xe7o de SMS ainda n\xe3o est\xe1 configurado."
+if(p==="otp_disabled"||p==="phone_provider_disabled")return"N\xe3o foi poss\xedvel enviar o c\xf3digo -- servi\xe7o de SMS ainda n\xe3o est\xe1 configurado."
 if(B.c.n(s,"token"))r=B.c.n(s,q)||B.c.n(s,"incorrect")
 else r=!1
 if(r)return"C\xf3digo incorreto. Confirma os 6 d\xedgitos e tenta novamente."
